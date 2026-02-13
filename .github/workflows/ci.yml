@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Clone dust compiler
+        run: |
+          git clone --depth 1 https://github.com/dustlang/dust.git ../dust
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+        with:
+          working-directory: ../dust
+
+      - name: Build Dust compiler
+        run: |
+          cd ../dust
+          cargo build --workspace
+
+      - name: Check xdv-boot source files
+        run: |
+          export PATH="$PWD/../dust/target/debug:$PATH"
+          dust check src
+          echo "All xdv-boot files check OK"

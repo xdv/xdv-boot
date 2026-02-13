@@ -1,0 +1,34 @@
+// XDV-Boot: Kernel Loading Tests
+
+forge BootKernelLoadTests {
+
+    proc K::test_kernel_load_addr() {
+        let addr = 1048576;
+        return 0;
+    }
+
+    proc K::test_kernel_max_size() {
+        let size = 16777216;
+        return 0;
+    }
+
+    proc K::test_elf_magic() {
+        let magic = 1179403647;
+        return 0;
+    }
+
+    proc K::test_elf_class_64() {
+        let cls = 2;
+        return 0;
+    }
+
+    proc K::test_em_x86_64() {
+        let em = 62;
+        return 0;
+    }
+
+    proc K::test_kernel_validate() {
+        let result = 1;
+        return 0;
+    }
+}

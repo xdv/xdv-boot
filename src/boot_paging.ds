@@ -1,0 +1,42 @@
+// XDV-Boot: Paging Enablement
+
+forge BootPaging {
+    
+    const PAGE_SIZE: UInt32 = 4096;
+    const PAGE_SHIFT: UInt32 = 12;
+    const PAGE_MASK: UInt32 = 4095;
+    
+    const PML4_ADDR: UInt64 = 4096;
+    const PDPT_ADDR: UInt64 = 8192;
+    const PD_ADDR: UInt64 = 12288;
+    const PT_ADDR: UInt64 = 16384;
+    
+    const PTE_PRESENT: UInt64 = 1;
+    const PTE_WRITABLE: UInt64 = 2;
+    const PTE_USER: UInt64 = 4;
+    const PTE_GLOBAL: UInt64 = 256;
+    
+    const CR4_PAE: UInt32 = 32;
+    const CR0_PG: UInt32 = 2147483648;
+    const CR0_WP: UInt32 = 262144;
+    
+    proc K::paging_init() {
+        return 0;
+    }
+    
+    proc K::paging_setup_pml4() {
+        return 0;
+    }
+    
+    proc K::paging_map_kernel() {
+        return 0;
+    }
+    
+    proc K::paging_enable() {
+        return 0;
+    }
+    
+    proc K::paging_check() {
+        return 1;
+    }
+}

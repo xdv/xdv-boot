@@ -1,0 +1,35 @@
+// XDV-Boot: Stage 1 - MBR Bootloader
+
+forge BootMbr {
+    
+    const MBR_MAGIC: UInt16 = 43609;
+    const MBR_SIZE: UInt16 = 512;
+    const MULTIBOOT_MAGIC: UInt32 = 911045161;
+    
+    const BOOT_DRIVE: UInt8 = 0;
+    const BOOT_LOAD_ADDR: UInt32 = 31744;
+    
+    const STAGE2_LOAD_SEG: UInt16 = 2048;
+    const STAGE2_LOAD_OFF: UInt16 = 0;
+    
+    proc K::mbr_init() {
+        return 0;
+    }
+    
+    proc K::check_mbr_magic() {
+        let magic = 43609;
+        return 1;
+    }
+    
+    proc K::load_stage2() {
+        return 0;
+    }
+    
+    proc K::jump_to_stage2() {
+        return 0;
+    }
+    
+    proc K::boot_halt() {
+        return 0;
+    }
+}

@@ -1,0 +1,38 @@
+// XDV-Boot: IDT Setup
+
+forge BootIdt {
+    
+    const IDT_ENTRIES: UInt32 = 256;
+    const IDT_SIZE: UInt32 = 2048;
+    
+    const IDT_PRESENT: UInt8 = 128;
+    const IDT_RING0: UInt8 = 0;
+    const IDT_TYPE_TRAP: UInt8 = 15;
+    const IDT_TYPE_INT: UInt8 = 14;
+    
+    const INT_DIVIDE: UInt8 = 0;
+    const INT_DEBUG: UInt8 = 1;
+    const INT_NMI: UInt8 = 2;
+    const INT_PAGE_FAULT: UInt8 = 14;
+    const INT_SYSCALL: UInt8 = 128;
+    
+    proc K::idt_init() {
+        return 0;
+    }
+    
+    proc K::idt_set_gate(num: UInt8) {
+        return 0;
+    }
+    
+    proc K::idt_load() {
+        return 0;
+    }
+    
+    proc K::idt_install() {
+        return 0;
+    }
+    
+    proc K::idt_enable() {
+        return 0;
+    }
+}

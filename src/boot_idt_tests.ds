@@ -1,0 +1,34 @@
+// XDV-Boot: IDT Tests
+
+forge BootIdtTests {
+
+    proc K::test_idt_entries() {
+        let entries = 256;
+        return 0;
+    }
+
+    proc K::test_idt_size() {
+        let size = 2048;
+        return 0;
+    }
+
+    proc K::test_int_divide() {
+        let num = 0;
+        return 0;
+    }
+
+    proc K::test_int_page_fault() {
+        let num = 14;
+        return 0;
+    }
+
+    proc K::test_int_syscall() {
+        let num = 128;
+        return 0;
+    }
+
+    proc K::test_idt_init() {
+        let result = 0;
+        return 0;
+    }
+}

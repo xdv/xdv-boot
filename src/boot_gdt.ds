@@ -1,0 +1,36 @@
+// XDV-Boot: GDT Setup
+
+forge BootGdt {
+    
+    const GDT_ENTRIES: UInt32 = 5;
+    const GDT_SIZE: UInt32 = 40;
+    
+    const SEL_NULL: UInt16 = 0;
+    const SEL_KCODE: UInt16 = 8;
+    const SEL_KDATA: UInt16 = 16;
+    const SEL_UCODE: UInt16 = 24;
+    const SEL_UDATA: UInt32 = 32;
+    
+    const DESC_PRESENT: UInt8 = 128;
+    const DESC_RING0: UInt8 = 0;
+    const DESC_RING3: UInt8 = 96;
+    const DESC_EXEC: UInt8 = 8;
+    const DESC_READ: UInt8 = 2;
+    const DESC_WRITE: UInt8 = 2;
+    
+    proc K::gdt_init() {
+        return 0;
+    }
+    
+    proc K::gdt_set_descriptor(index: UInt32) {
+        return 0;
+    }
+    
+    proc K::gdt_load() {
+        return 0;
+    }
+    
+    proc K::gdt_install() {
+        return 0;
+    }
+}

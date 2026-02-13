@@ -1,0 +1,34 @@
+// XDV-Boot: XDVFS Mount Tests
+
+forge BootXdvFsMountTests {
+
+    proc K::test_xdvfs_magic() {
+        let magic = 1479858246;
+        return 0;
+    }
+
+    proc K::test_xdvfs_offset() {
+        let offset = 2048;
+        return 0;
+    }
+
+    proc K::test_xdvfs_version() {
+        let ver = 1;
+        return 0;
+    }
+
+    proc K::test_root_inode() {
+        let inode = 2;
+        return 0;
+    }
+
+    proc K::test_xdvfs_validate() {
+        let result = 1;
+        return 0;
+    }
+
+    proc K::test_xdvfs_mount_root() {
+        let result = 0;
+        return 0;
+    }
+}

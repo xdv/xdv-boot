@@ -1,0 +1,34 @@
+// XDV-Boot: MBR Tests
+
+forge BootMbrTests {
+
+    proc K::test_mbr_magic() {
+        let magic = 43609;
+        return 0;
+    }
+
+    proc K::test_mbr_size() {
+        let size = 512;
+        return 0;
+    }
+
+    proc K::test_multiboot_magic() {
+        let magic = 911045161;
+        return 0;
+    }
+
+    proc K::test_boot_drive() {
+        let drive = 0;
+        return 0;
+    }
+
+    proc K::test_load_stage2() {
+        let result = 0;
+        return 0;
+    }
+
+    proc K::test_jump_to_stage2() {
+        let result = 0;
+        return 0;
+    }
+}

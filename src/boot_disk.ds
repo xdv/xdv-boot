@@ -1,0 +1,51 @@
+// XDV-Boot: Disk I/O
+
+forge BootDisk {
+    
+    const ATA_PRIMARY: UInt16 = 496;
+    const ATA_SECONDARY: UInt16 = 504;
+    const ATA_DATA: UInt16 = 0;
+    const ATA_ERROR: UInt16 = 1;
+    const ATA_FEATURES: UInt16 = 1;
+    const ATA_SECCOUNT: UInt16 = 2;
+    const ATA_LBA_LOW: UInt16 = 3;
+    const ATA_LBA_MID: UInt16 = 4;
+    const ATA_LBA_HIGH: UInt16 = 5;
+    const ATA_DRIVE: UInt16 = 6;
+    const ATA_CMD: UInt16 = 7;
+    const ATA_STATUS: UInt16 = 7;
+    
+    const CMD_READ: UInt8 = 32;
+    const CMD_WRITE: UInt8 = 48;
+    const CMD_IDENTIFY: UInt8 = 236;
+    
+    const STATUS_ERR: UInt8 = 1;
+    const STATUS_DRQ: UInt8 = 8;
+    const STATUS_SRV: UInt8 = 16;
+    const STATUS_DF: UInt8 = 32;
+    const STATUS_DRDY: UInt64 = 64;
+    const STATUS_BSY: UInt64 = 128;
+    
+    const SECTOR_SIZE: UInt32 = 512;
+    const MAX_DRIVES: UInt32 = 4;
+    
+    proc K::disk_init() {
+        return 0;
+    }
+    
+    proc K::disk_wait_ready() {
+        return 0;
+    }
+    
+    proc K::disk_read_sector(lba: UInt64, buffer: UInt64) {
+        return 0;
+    }
+    
+    proc K::disk_write_sector(lba: UInt64, buffer: UInt64) {
+        return 0;
+    }
+    
+    proc K::disk_identify(drive: UInt8) {
+        return 0;
+    }
+}

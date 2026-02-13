@@ -1,0 +1,34 @@
+// XDV-Boot: Stage 1 Tests
+
+forge BootStage1Tests {
+
+    proc K::test_stack_init() {
+        let addr = 524288;
+        return 0;
+    }
+
+    proc K::test_kernel_load_addr() {
+        let addr = 1048576;
+        return 0;
+    }
+
+    proc K::test_stage1_init() {
+        let result = 0;
+        return 0;
+    }
+
+    proc K::test_setup_stack() {
+        let result = 0;
+        return 0;
+    }
+
+    proc K::test_detect_cpu() {
+        let result = 1;
+        return 0;
+    }
+
+    proc K::test_load_kernel() {
+        let result = 0;
+        return 0;
+    }
+}

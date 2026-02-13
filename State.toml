@@ -1,0 +1,14 @@
+# XDV-Boot Workspace Manifest
+
+[workspace]
+name = "xdv_boot"
+version = "0.2.0"
+description = "XDV Bootloader for XDV OS"
+
+[sector]
+name = "xdv_boot"
+path = "src"
+
+[target.x64-pc-none]
+linker = "ld"
+linker_flags = ["-nostdlib", "-static"]

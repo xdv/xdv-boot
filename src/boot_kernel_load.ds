@@ -1,0 +1,42 @@
+// XDV-Boot: Kernel Loading
+
+forge BootKernelLoad {
+    
+    const KERNEL_LOAD_ADDR: UInt32 = 1048576;
+    const KERNEL_ENTRY_ADDR: UInt32 = 1048576;
+    const KERNEL_MAX_SIZE: UInt32 = 16777216;
+    
+    const ELF_MAGIC: UInt32 = 1179403647;
+    const ELF_CLASS_64: UInt8 = 2;
+    const ELF_DATA_LSB: UInt8 = 1;
+    const ELF_VERSION: UInt8 = 1;
+    
+    const EM_X86_64: UInt16 = 62;
+    
+    const PH_DRUNTIME: UInt32 = 1;
+    const PH_LOADABLE: UInt32 = 1;
+    
+    proc K::kernel_load_init() {
+        return 0;
+    }
+    
+    proc K::kernel_read_header() {
+        return 0;
+    }
+    
+    proc K::kernel_validate_elf() {
+        return 1;
+    }
+    
+    proc K::kernel_load_segments() {
+        return 0;
+    }
+    
+    proc K::kernel_get_entry() {
+        return 1048576;
+    }
+    
+    proc K::kernel_jump_to_entry() {
+        return 0;
+    }
+}

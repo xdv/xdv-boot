@@ -1,0 +1,35 @@
+// XDV-Boot: Stage 1 - Basic Initialization
+
+forge BootStage1 {
+    
+    const STACK_INIT: UInt32 = 524288;
+    const KERNEL_LOAD_ADDR: UInt32 = 1048576;
+    
+    proc K::stage1_init() {
+        return 0;
+    }
+    
+    proc K::setup_stack() {
+        return 0;
+    }
+    
+    proc K::clear_screen() {
+        return 0;
+    }
+    
+    proc K::detect_memory() {
+        return 0;
+    }
+    
+    proc K::detect_cpu() {
+        return 1;
+    }
+    
+    proc K::load_kernel() {
+        return 0;
+    }
+    
+    proc K::stage1_main() {
+        return 0;
+    }
+}

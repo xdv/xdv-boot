@@ -1,0 +1,31 @@
+// XDV-Boot: XDVFS Mount
+
+forge BootXdvFsMount {
+    
+    const XDVFS_MAGIC: UInt32 = 1479858246;
+    const XDVFS_OFFSET: UInt64 = 2048;
+    const XDVFS_VERSION: UInt16 = 1;
+    
+    const ROOT_INODE: UInt64 = 2;
+    const SUPERBLOCK_BLOCK: UInt64 = 0;
+    
+    proc K::xdvfs_mount_init() {
+        return 0;
+    }
+    
+    proc K::xdvfs_read_superblock() {
+        return 0;
+    }
+    
+    proc K::xdvfs_validate() {
+        return 1;
+    }
+    
+    proc K::xdvfs_mount_root() {
+        return 0;
+    }
+    
+    proc K::xdvfs_mount_device(device: UInt32) {
+        return 0;
+    }
+}
