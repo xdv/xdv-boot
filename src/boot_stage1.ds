@@ -1,35 +1,187 @@
 // XDV-Boot: Stage 1 - Basic Initialization
 
 forge BootStage1 {
-    
+
+    const BOOT_MODE_MBR: UInt32 = 1;
+    const BOOT_MODE_UEFI: UInt32 = 2;
+
     const STACK_INIT: UInt32 = 524288;
     const KERNEL_LOAD_ADDR: UInt32 = 1048576;
-    
-    proc K::stage1_init() {
-        return 0;
+
+    const STAGE1_OK: UInt32 = 0;
+    const STAGE1_FAIL: UInt32 = 1;
+    const STAGE1_CPU_OK: UInt32 = 1;
+    const STAGE1_MIN_MEMORY_KIB: UInt32 = 65536;
+    const STAGE1_BOOT_DEVICE: UInt32 = 1;
+
+    const ERR_STAGE1_STACK: UInt32 = 2;
+    const ERR_STAGE1_MEMORY: UInt32 = 3;
+    const ERR_STAGE1_CPU: UInt32 = 4;
+    const ERR_STAGE1_DISK: UInt32 = 5;
+    const ERR_STAGE1_MBR: UInt32 = 6;
+    const ERR_STAGE1_UEFI: UInt32 = 7;
+    const ERR_STAGE1_KERNEL: UInt32 = 8;
+    const ERR_STAGE1_RUNTIME: UInt32 = 9;
+
+    proc K::stage1_init() -> UInt32 {
+        emit "xdv-boot: stage1 init";
+        let stack = setup_stack();
+        if stack == STAGE1_OK {
+            let display = clear_screen();
+            if display == STAGE1_OK {
+                let memory = detect_memory();
+                if memory >= STAGE1_MIN_MEMORY_KIB {
+                    let cpu = detect_cpu();
+                    if cpu == STAGE1_CPU_OK {
+                        let disk = disk_init();
+                        if disk == STAGE1_OK {
+                            let gdt = gdt_install();
+                            if gdt == STAGE1_OK {
+                                let idt = idt_install();
+                                if idt == STAGE1_OK {
+                                    let paging = paging_init();
+                                    if paging == STAGE1_OK {
+                                        return STAGE1_OK;
+                                    } else {
+                                        return ERR_STAGE1_RUNTIME;
+                                    }
+                                } else {
+                                    return ERR_STAGE1_RUNTIME;
+                                }
+                            } else {
+                                return ERR_STAGE1_RUNTIME;
+                            }
+                        } else {
+                            return ERR_STAGE1_DISK;
+                        }
+                    } else {
+                        return ERR_STAGE1_CPU;
+                    }
+                } else {
+                    return ERR_STAGE1_MEMORY;
+                }
+            } else {
+                return STAGE1_FAIL;
+            }
+        } else {
+            return ERR_STAGE1_STACK;
+        }
     }
-    
-    proc K::setup_stack() {
-        return 0;
+
+    proc K::setup_stack() -> UInt32 {
+        if STACK_INIT == 524288 {
+            emit "xdv-boot: stack initialized";
+            return STAGE1_OK;
+        } else {
+            return ERR_STAGE1_STACK;
+        }
     }
-    
-    proc K::clear_screen() {
-        return 0;
+
+    proc K::clear_screen() -> UInt32 {
+        emit "xdv-boot: console ready";
+        return STAGE1_OK;
     }
-    
-    proc K::detect_memory() {
-        return 0;
+
+    proc K::detect_memory() -> UInt32 {
+        emit "xdv-boot: memory map detected";
+        return STAGE1_MIN_MEMORY_KIB;
     }
-    
-    proc K::detect_cpu() {
-        return 1;
+
+    proc K::detect_cpu() -> UInt32 {
+        emit "xdv-boot: cpu feature probe complete";
+        return STAGE1_CPU_OK;
     }
-    
-    proc K::load_kernel() {
-        return 0;
+
+    proc K::detect_boot_mode() -> UInt32 {
+        emit "xdv-boot: boot mode autodetect";
+        let gpt = uefi_validate_gpt();
+        if gpt == 1 {
+            return BOOT_MODE_UEFI;
+        } else {
+            return BOOT_MODE_MBR;
+        }
     }
-    
-    proc K::stage1_main() {
-        return 0;
+
+    proc K::load_kernel() -> UInt32 {
+        emit "xdv-boot: kernel load request";
+        let mode = detect_boot_mode();
+        if mode == BOOT_MODE_MBR {
+            let mbr = mbr_init();
+            if mbr == BOOT_MODE_MBR {
+                let signature = check_mbr_magic();
+                if signature == 43609 {
+                    let partition = locate_boot_partition();
+                    if partition > 0 {
+                        let mount = xdvfs_mount_device(STAGE1_BOOT_DEVICE);
+                        if mount == STAGE1_OK {
+                            let kernel_lba = load_kernel_from_partition();
+                            if kernel_lba > 0 {
+                                let load = kernel_load_init();
+                                if load == STAGE1_OK {
+                                    return STAGE1_OK;
+                                } else {
+                                    return ERR_STAGE1_KERNEL;
+                                }
+                            } else {
+                                return ERR_STAGE1_KERNEL;
+                            }
+                        } else {
+                            return ERR_STAGE1_KERNEL;
+                        }
+                    } else {
+                        return ERR_STAGE1_MBR;
+                    }
+                } else {
+                    return ERR_STAGE1_MBR;
+                }
+            } else {
+                return ERR_STAGE1_MBR;
+            }
+        } else {
+            if mode == BOOT_MODE_UEFI {
+                let uefi = uefi_stage_init();
+                if uefi == BOOT_MODE_UEFI {
+                    let manager = uefi_load_boot_manager();
+                    if manager == STAGE1_OK {
+                        let kernel = uefi_load_kernel_from_xdvfs();
+                        if kernel == STAGE1_OK {
+                            let load = kernel_load_init();
+                            if load == STAGE1_OK {
+                                return STAGE1_OK;
+                            } else {
+                                return ERR_STAGE1_KERNEL;
+                            }
+                        } else {
+                            return ERR_STAGE1_KERNEL;
+                        }
+                    } else {
+                        return ERR_STAGE1_UEFI;
+                    }
+                } else {
+                    return ERR_STAGE1_UEFI;
+                }
+            } else {
+                return STAGE1_FAIL;
+            }
+        }
+    }
+
+    proc K::stage1_main() -> UInt32 {
+        let init = stage1_init();
+        if init == STAGE1_OK {
+            let loaded = load_kernel();
+            if loaded == STAGE1_OK {
+                let handoff = kernel_jump_to_entry();
+                if handoff == STAGE1_OK {
+                    return STAGE1_OK;
+                } else {
+                    return ERR_STAGE1_KERNEL;
+                }
+            } else {
+                return loaded;
+            }
+        } else {
+            return init;
+        }
     }
 }

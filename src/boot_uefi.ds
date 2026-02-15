@@ -1,0 +1,119 @@
+// XDV-Boot: UEFI stage for GPT/ESP boot flows.
+
+forge BootUefi {
+
+    const BOOT_MODE_UEFI: UInt32 = 2;
+    const GPT_HEADER_LBA: UInt64 = 1;
+    const PARTITION_ENTRY_LBA: UInt64 = 2;
+    const PARTITION_ENTRY_COUNT: UInt32 = 128;
+
+    const ESP_START_LBA: UInt64 = 2048;
+    const ESP_SECTOR_COUNT: UInt64 = 16384;
+    const XDVFS_PARTITION_INDEX: UInt32 = 1;
+
+    const BOOT_OK: UInt32 = 0;
+    const BOOT_FAIL: UInt32 = 1;
+    const GPT_VALID: UInt32 = 1;
+    const ERR_GPT_INVALID: UInt32 = 2;
+    const ERR_ESP_INVALID: UInt32 = 3;
+    const ERR_BOOT_MANAGER_LOAD: UInt32 = 4;
+    const ERR_KERNEL_LOAD: UInt32 = 5;
+
+    const EFI_BOOT_MANAGER_BUFFER: UInt64 = 65536;
+    const EFI_KERNEL_BUFFER: UInt64 = 1048576;
+    const EFI_BOOT_DEVICE: UInt32 = 1;
+
+    proc K::uefi_stage_init() -> UInt32 {
+        emit "xdv-boot: UEFI stage init";
+        let gpt = uefi_validate_gpt();
+        if gpt == GPT_VALID {
+            let esp = uefi_mount_esp();
+            if esp == BOOT_OK {
+                return BOOT_MODE_UEFI;
+            } else {
+                return BOOT_FAIL;
+            }
+        } else {
+            return BOOT_FAIL;
+        }
+    }
+
+    proc K::uefi_validate_gpt() -> UInt32 {
+        emit "xdv-boot: validating GPT header and partition array";
+        if GPT_HEADER_LBA == 1 {
+            if PARTITION_ENTRY_LBA == 2 {
+                if PARTITION_ENTRY_COUNT >= 32 {
+                    if PARTITION_ENTRY_COUNT <= 512 {
+                        return GPT_VALID;
+                    } else {
+                        return ERR_GPT_INVALID;
+                    }
+                } else {
+                    return ERR_GPT_INVALID;
+                }
+            } else {
+                return ERR_GPT_INVALID;
+            }
+        } else {
+            return ERR_GPT_INVALID;
+        }
+    }
+
+    proc K::uefi_mount_esp() -> UInt32 {
+        emit "xdv-boot: mounting EFI system partition";
+        if ESP_START_LBA >= 2048 {
+            if ESP_SECTOR_COUNT >= 4096 {
+                let mount_status = xdvfs_mount_device(EFI_BOOT_DEVICE);
+                if mount_status == BOOT_OK {
+                    return BOOT_OK;
+                } else {
+                    return ERR_ESP_INVALID;
+                }
+            } else {
+                return ERR_ESP_INVALID;
+            }
+        } else {
+            return ERR_ESP_INVALID;
+        }
+    }
+
+    proc K::uefi_load_boot_manager() -> UInt32 {
+        emit "xdv-boot: loading EFI/BOOT/BOOTX64.EFI";
+        let read_status = disk_read_sector(ESP_START_LBA, EFI_BOOT_MANAGER_BUFFER);
+        if read_status == BOOT_OK {
+            return BOOT_OK;
+        } else {
+            return ERR_BOOT_MANAGER_LOAD;
+        }
+    }
+
+    proc K::uefi_load_kernel_from_xdvfs() -> UInt32 {
+        emit "xdv-boot: loading xdv-kernel from xdvfs partition";
+        let kernel_lba = xdvfs_get_kernel_lba();
+        if kernel_lba > 0 {
+            let read_status = disk_read_sector(kernel_lba, EFI_KERNEL_BUFFER);
+            if read_status == BOOT_OK {
+                return BOOT_OK;
+            } else {
+                return ERR_KERNEL_LOAD;
+            }
+        } else {
+            return ERR_KERNEL_LOAD;
+        }
+    }
+
+    proc K::uefi_handoff_kernel() -> UInt32 {
+        let load_status = uefi_load_kernel_from_xdvfs();
+        if load_status == BOOT_OK {
+            let handoff = kernel_jump_to_entry();
+            if handoff == BOOT_OK {
+                emit "xdv-boot: UEFI handoff to xdv-kernel";
+                return BOOT_OK;
+            } else {
+                return BOOT_FAIL;
+            }
+        } else {
+            return BOOT_FAIL;
+        }
+    }
+}

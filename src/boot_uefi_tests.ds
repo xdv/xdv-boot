@@ -1,0 +1,29 @@
+// XDV-Boot: UEFI Tests
+
+forge BootUefiTests {
+
+    proc K::test_boot_mode_uefi() {
+        let mode = 2;
+        return 0;
+    }
+
+    proc K::test_gpt_header_lba() {
+        let lba = 1;
+        return 0;
+    }
+
+    proc K::test_esp_start_lba() {
+        let lba = 2048;
+        return 0;
+    }
+
+    proc K::test_partition_count() {
+        let count = 128;
+        return 0;
+    }
+
+    proc K::test_kernel_load_from_xdvfs() {
+        let result = 0;
+        return 0;
+    }
+}

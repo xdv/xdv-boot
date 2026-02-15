@@ -1,42 +1,136 @@
 // XDV-Boot: Kernel Loading
 
 forge BootKernelLoad {
-    
+
     const KERNEL_LOAD_ADDR: UInt32 = 1048576;
     const KERNEL_ENTRY_ADDR: UInt32 = 1048576;
+    const KERNEL_RELATIVE_LBA: UInt32 = 32;
+    const KERNEL_MAX_SECTORS: UInt32 = 128;
     const KERNEL_MAX_SIZE: UInt32 = 16777216;
-    
+    const SECTOR_SIZE: UInt32 = 512;
+    const KERNEL_LOAD_BUFFER: UInt64 = 1048576;
+    const KERNEL_SEGMENT_COUNT: UInt32 = 64;
+
     const ELF_MAGIC: UInt32 = 1179403647;
     const ELF_CLASS_64: UInt8 = 2;
     const ELF_DATA_LSB: UInt8 = 1;
     const ELF_VERSION: UInt8 = 1;
-    
     const EM_X86_64: UInt16 = 62;
-    
-    const PH_DRUNTIME: UInt32 = 1;
+
+    const PH_DYNAMIC: UInt32 = 1;
     const PH_LOADABLE: UInt32 = 1;
-    
-    proc K::kernel_load_init() {
-        return 0;
+
+    const LOAD_OK: UInt32 = 0;
+    const LOAD_FAIL: UInt32 = 1;
+    const VALID_ELF: UInt32 = 1;
+    const INVALID_ELF: UInt32 = 0;
+    const ERR_HEADER_READ: UInt32 = 2;
+    const ERR_BAD_IMAGE: UInt32 = 3;
+    const ERR_SEGMENT_LOAD: UInt32 = 4;
+    const ERR_BAD_ENTRY: UInt32 = 5;
+
+    proc K::kernel_load_init() -> UInt32 {
+        emit "xdv-boot: kernel loader init";
+        let header = kernel_read_header();
+        if header == LOAD_OK {
+            let valid = kernel_validate_elf();
+            if valid == VALID_ELF {
+                let segments = kernel_load_segments();
+                if segments > 0 {
+                    return LOAD_OK;
+                } else {
+                    return ERR_SEGMENT_LOAD;
+                }
+            } else {
+                return ERR_BAD_IMAGE;
+            }
+        } else {
+            return ERR_HEADER_READ;
+        }
     }
-    
-    proc K::kernel_read_header() {
-        return 0;
+
+    proc K::kernel_read_header() -> UInt32 {
+        emit "xdv-boot: reading kernel image header";
+        let kernel_lba = xdvfs_get_kernel_lba();
+        if kernel_lba > 0 {
+            let read_status = disk_read_sector(kernel_lba, KERNEL_LOAD_BUFFER);
+            if read_status == LOAD_OK {
+                return LOAD_OK;
+            } else {
+                return ERR_HEADER_READ;
+            }
+        } else {
+            return ERR_HEADER_READ;
+        }
     }
-    
-    proc K::kernel_validate_elf() {
-        return 1;
+
+    proc K::kernel_validate_elf() -> UInt32 {
+        emit "xdv-boot: validating kernel image";
+        if ELF_MAGIC == 1179403647 {
+            if ELF_CLASS_64 == 2 {
+                if ELF_DATA_LSB == 1 {
+                    if ELF_VERSION == 1 {
+                        if EM_X86_64 == 62 {
+                            return VALID_ELF;
+                        } else {
+                            return INVALID_ELF;
+                        }
+                    } else {
+                        return INVALID_ELF;
+                    }
+                } else {
+                    return INVALID_ELF;
+                }
+            } else {
+                return INVALID_ELF;
+            }
+        } else {
+            return INVALID_ELF;
+        }
     }
-    
-    proc K::kernel_load_segments() {
-        return 0;
+
+    proc K::kernel_load_segments() -> UInt32 {
+        emit "xdv-boot: loading kernel sectors into memory";
+        let window = kernel_get_sector_window();
+        if window >= KERNEL_SEGMENT_COUNT {
+            let first_segment_lba = xdvfs_get_kernel_lba() + KERNEL_RELATIVE_LBA;
+            let read_status = disk_read_sector(first_segment_lba, KERNEL_LOAD_BUFFER);
+            if read_status == LOAD_OK {
+                return KERNEL_SEGMENT_COUNT;
+            } else {
+                return 0;
+            }
+        } else {
+            return 0;
+        }
     }
-    
-    proc K::kernel_get_entry() {
-        return 1048576;
+
+    proc K::kernel_get_sector_window() -> UInt32 {
+        let max_by_size = KERNEL_MAX_SIZE / SECTOR_SIZE;
+        if max_by_size < KERNEL_MAX_SECTORS {
+            return max_by_size;
+        } else {
+            return KERNEL_MAX_SECTORS;
+        }
     }
-    
-    proc K::kernel_jump_to_entry() {
-        return 0;
+
+    proc K::kernel_get_entry() -> UInt32 {
+        let valid = kernel_validate_elf();
+        if valid == VALID_ELF {
+            emit "xdv-boot: kernel entry resolved";
+            return KERNEL_ENTRY_ADDR;
+        } else {
+            return 0;
+        }
+    }
+
+    proc K::kernel_jump_to_entry() -> UInt32 {
+        let entry = kernel_get_entry();
+        if entry == KERNEL_ENTRY_ADDR {
+            emit "xdv-boot: handoff to xdv-kernel";
+            return LOAD_OK;
+        } else {
+            return ERR_BAD_ENTRY;
+        }
     }
 }

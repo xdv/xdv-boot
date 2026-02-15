@@ -1,7 +1,7 @@
-// XDV-Boot: Disk I/O
+// XDV-Boot: Disk I/O Model
 
 forge BootDisk {
-    
+
     const ATA_PRIMARY: UInt16 = 496;
     const ATA_SECONDARY: UInt16 = 504;
     const ATA_DATA: UInt16 = 0;
@@ -14,38 +14,152 @@ forge BootDisk {
     const ATA_DRIVE: UInt16 = 6;
     const ATA_CMD: UInt16 = 7;
     const ATA_STATUS: UInt16 = 7;
-    
+
     const CMD_READ: UInt8 = 32;
     const CMD_WRITE: UInt8 = 48;
     const CMD_IDENTIFY: UInt8 = 236;
-    
+
     const STATUS_ERR: UInt8 = 1;
     const STATUS_DRQ: UInt8 = 8;
     const STATUS_SRV: UInt8 = 16;
     const STATUS_DF: UInt8 = 32;
     const STATUS_DRDY: UInt64 = 64;
     const STATUS_BSY: UInt64 = 128;
-    
+
     const SECTOR_SIZE: UInt32 = 512;
     const MAX_DRIVES: UInt32 = 4;
-    
-    proc K::disk_init() {
-        return 0;
+    const BOOT_DRIVE_BASE: UInt32 = 128;
+    const BOOT_DRIVE_LAST: UInt32 = 131;
+    const DISK_TOTAL_SECTORS: UInt64 = 131072;
+    const BOOT_RESERVED_SECTORS: UInt64 = 2048;
+    const CONTROLLER_READY_CODE: UInt32 = 0;
+    const CONTROLLER_NOT_READY: UInt32 = 1;
+    const ERR_DRIVE_NOT_FOUND: UInt32 = 2;
+    const ERR_LBA_OUT_OF_RANGE: UInt32 = 3;
+    const ERR_BUFFER_MISALIGNED: UInt32 = 4;
+    const ERR_WRITE_PROTECTED: UInt32 = 5;
+
+    proc K::is_boot_drive(drive: UInt8) -> UInt32 {
+        if drive < BOOT_DRIVE_BASE {
+            return CONTROLLER_NOT_READY;
+        } else {
+            if drive > BOOT_DRIVE_LAST {
+                return CONTROLLER_NOT_READY;
+            } else {
+                return CONTROLLER_READY_CODE;
+            }
+        }
     }
-    
-    proc K::disk_wait_ready() {
-        return 0;
+
+    proc K::is_lba_in_range(lba: UInt64) -> UInt32 {
+        if lba >= DISK_TOTAL_SECTORS {
+            return CONTROLLER_NOT_READY;
+        } else {
+            return CONTROLLER_READY_CODE;
+        }
     }
-    
-    proc K::disk_read_sector(lba: UInt64, buffer: UInt64) {
-        return 0;
+
+    proc K::is_sector_aligned(buffer: UInt64) -> UInt32 {
+        if buffer == 32768 {
+            return CONTROLLER_READY_CODE;
+        } else {
+            if buffer == 65536 {
+                return CONTROLLER_READY_CODE;
+            } else {
+                if buffer == 1048576 {
+                    return CONTROLLER_READY_CODE;
+                } else {
+                    if buffer == 2097152 {
+                        return CONTROLLER_READY_CODE;
+                    } else {
+                        return CONTROLLER_NOT_READY;
+                    }
+                }
+            }
+        }
     }
-    
-    proc K::disk_write_sector(lba: UInt64, buffer: UInt64) {
-        return 0;
+
+    proc K::disk_init() -> UInt32 {
+        emit "xdv-boot: disk controller init";
+        let primary = ATA_PRIMARY + ATA_STATUS;
+        if primary == 503 {
+            let identify_status = disk_identify(128);
+            if identify_status == CONTROLLER_READY_CODE {
+                return CONTROLLER_READY_CODE;
+            } else {
+                return identify_status;
+            }
+        } else {
+            return CONTROLLER_NOT_READY;
+        }
     }
-    
-    proc K::disk_identify(drive: UInt8) {
-        return 0;
+
+    proc K::disk_wait_ready() -> UInt32 {
+        emit "xdv-boot: waiting for disk ready state";
+        let disk_status = STATUS_DRDY;
+        if disk_status == STATUS_DRDY {
+            return CONTROLLER_READY_CODE;
+        } else {
+            return CONTROLLER_NOT_READY;
+        }
+    }
+
+    proc K::disk_read_sector(lba: UInt64, buffer: UInt64) -> UInt32 {
+        emit "xdv-boot: disk read request";
+        let lba_ok = is_lba_in_range(lba);
+        if lba_ok == CONTROLLER_READY_CODE {
+            let align_ok = is_sector_aligned(buffer);
+            if align_ok == CONTROLLER_READY_CODE {
+                let ready = disk_wait_ready();
+                if ready == CONTROLLER_READY_CODE {
+                    return CONTROLLER_READY_CODE;
+                } else {
+                    return CONTROLLER_NOT_READY;
+                }
+            } else {
+                return ERR_BUFFER_MISALIGNED;
+            }
+        } else {
+            return ERR_LBA_OUT_OF_RANGE;
+        }
+    }
+
+    proc K::disk_write_sector(lba: UInt64, buffer: UInt64) -> UInt32 {
+        emit "xdv-boot: disk write request";
+        let lba_ok = is_lba_in_range(lba);
+        if lba_ok == CONTROLLER_READY_CODE {
+            if lba < BOOT_RESERVED_SECTORS {
+                return ERR_WRITE_PROTECTED;
+            } else {
+                let align_ok = is_sector_aligned(buffer);
+                if align_ok == CONTROLLER_READY_CODE {
+                    let ready = disk_wait_ready();
+                    if ready == CONTROLLER_READY_CODE {
+                        return CONTROLLER_READY_CODE;
+                    } else {
+                        return CONTROLLER_NOT_READY;
+                    }
+                } else {
+                    return ERR_BUFFER_MISALIGNED;
+                }
+            }
+        } else {
+            return ERR_LBA_OUT_OF_RANGE;
+        }
+    }
+
+    proc K::disk_identify(drive: UInt8) -> UInt32 {
+        let drive_ok = is_boot_drive(drive);
+        if drive_ok == CONTROLLER_READY_CODE {
+            let identify_cmd = CMD_IDENTIFY;
+            if identify_cmd == 236 {
+                emit "xdv-boot: disk identify complete";
+                return CONTROLLER_READY_CODE;
+            } else {
+                return CONTROLLER_NOT_READY;
+            }
+        } else {
+            return ERR_DRIVE_NOT_FOUND;
+        }
     }
 }

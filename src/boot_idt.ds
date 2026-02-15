@@ -1,7 +1,7 @@
 // XDV-Boot: IDT Setup
 
 forge BootIdt {
-    
+
     const IDT_ENTRIES: UInt32 = 256;
     const IDT_SIZE: UInt32 = 2048;
     
@@ -15,24 +15,86 @@ forge BootIdt {
     const INT_NMI: UInt8 = 2;
     const INT_PAGE_FAULT: UInt8 = 14;
     const INT_SYSCALL: UInt8 = 128;
-    
-    proc K::idt_init() {
-        return 0;
+
+    const IDT_OK: UInt32 = 0;
+    const IDT_FAIL: UInt32 = 1;
+    const ERR_IDT_RANGE: UInt32 = 2;
+
+    proc K::is_valid_idt_gate(num: UInt8) -> UInt32 {
+        if num < IDT_ENTRIES {
+            return IDT_OK;
+        } else {
+            return IDT_FAIL;
+        }
     }
-    
-    proc K::idt_set_gate(num: UInt8) {
-        return 0;
+
+    proc K::idt_init() -> UInt32 {
+        emit "xdv-boot: idt init";
+        let divide = idt_set_gate(INT_DIVIDE);
+        if divide == IDT_OK {
+            let page_fault = idt_set_gate(INT_PAGE_FAULT);
+            if page_fault == IDT_OK {
+                let syscall = idt_set_gate(INT_SYSCALL);
+                if syscall == IDT_OK {
+                    return IDT_OK;
+                } else {
+                    return IDT_FAIL;
+                }
+            } else {
+                return IDT_FAIL;
+            }
+        } else {
+            return IDT_FAIL;
+        }
     }
-    
-    proc K::idt_load() {
-        return 0;
+
+    proc K::idt_set_gate(num: UInt8) -> UInt32 {
+        let valid = is_valid_idt_gate(num);
+        if valid == IDT_OK {
+            emit "xdv-boot: idt gate programmed";
+            return IDT_OK;
+        } else {
+            return ERR_IDT_RANGE;
+        }
     }
-    
-    proc K::idt_install() {
-        return 0;
+
+    proc K::idt_load() -> UInt32 {
+        let core = idt_set_gate(INT_DIVIDE);
+        if core == IDT_OK {
+            let pf = idt_set_gate(INT_PAGE_FAULT);
+            if pf == IDT_OK {
+                emit "xdv-boot: idt loaded";
+                return IDT_OK;
+            } else {
+                return IDT_FAIL;
+            }
+        } else {
+            return IDT_FAIL;
+        }
     }
-    
-    proc K::idt_enable() {
-        return 0;
+
+    proc K::idt_install() -> UInt32 {
+        let init = idt_init();
+        if init == IDT_OK {
+            let loaded = idt_load();
+            if loaded == IDT_OK {
+                emit "xdv-boot: idt install complete";
+                return IDT_OK;
+            } else {
+                return IDT_FAIL;
+            }
+        } else {
+            return IDT_FAIL;
+        }
+    }
+
+    proc K::idt_enable() -> UInt32 {
+        let installed = idt_install();
+        if installed == IDT_OK {
+            emit "xdv-boot: interrupts enabled";
+            return IDT_OK;
+        } else {
+            return IDT_FAIL;
+        }
     }
 }

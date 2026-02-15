@@ -1,7 +1,7 @@
 // XDV-Boot: GDT Setup
 
 forge BootGdt {
-    
+
     const GDT_ENTRIES: UInt32 = 5;
     const GDT_SIZE: UInt32 = 40;
     
@@ -17,20 +17,107 @@ forge BootGdt {
     const DESC_EXEC: UInt8 = 8;
     const DESC_READ: UInt8 = 2;
     const DESC_WRITE: UInt8 = 2;
-    
-    proc K::gdt_init() {
-        return 0;
+
+    const GDT_OK: UInt32 = 0;
+    const GDT_FAIL: UInt32 = 1;
+    const ERR_GDT_INDEX: UInt32 = 2;
+    const ERR_GDT_DESCRIPTOR: UInt32 = 3;
+
+    proc K::gdt_descriptor_access(index: UInt32) -> UInt32 {
+        if index == 0 {
+            return 0;
+        } else {
+            if index == 1 {
+                return DESC_PRESENT + DESC_RING0 + DESC_EXEC + DESC_READ;
+            } else {
+                if index == 2 {
+                    return DESC_PRESENT + DESC_RING0 + DESC_WRITE;
+                } else {
+                    if index == 3 {
+                        return DESC_PRESENT + DESC_RING3 + DESC_EXEC + DESC_READ;
+                    } else {
+                        if index == 4 {
+                            return DESC_PRESENT + DESC_RING3 + DESC_WRITE;
+                        } else {
+                            return ERR_GDT_INDEX;
+                        }
+                    }
+                }
+            }
+        }
     }
-    
-    proc K::gdt_set_descriptor(index: UInt32) {
-        return 0;
+
+    proc K::gdt_init() -> UInt32 {
+        emit "xdv-boot: gdt init";
+        let null_desc = gdt_set_descriptor(0);
+        if null_desc == GDT_OK {
+            let code_desc = gdt_set_descriptor(1);
+            if code_desc == GDT_OK {
+                let data_desc = gdt_set_descriptor(2);
+                if data_desc == GDT_OK {
+                    let ucode_desc = gdt_set_descriptor(3);
+                    if ucode_desc == GDT_OK {
+                        let udata_desc = gdt_set_descriptor(4);
+                        if udata_desc == GDT_OK {
+                            return GDT_OK;
+                        } else {
+                            return GDT_FAIL;
+                        }
+                    } else {
+                        return GDT_FAIL;
+                    }
+                } else {
+                    return GDT_FAIL;
+                }
+            } else {
+                return GDT_FAIL;
+            }
+        } else {
+            return GDT_FAIL;
+        }
     }
-    
-    proc K::gdt_load() {
-        return 0;
+
+    proc K::gdt_set_descriptor(index: UInt32) -> UInt32 {
+        if index >= GDT_ENTRIES {
+            return ERR_GDT_INDEX;
+        } else {
+            let access = gdt_descriptor_access(index);
+            if access == ERR_GDT_INDEX {
+                return ERR_GDT_DESCRIPTOR;
+            } else {
+                emit "xdv-boot: gdt descriptor programmed";
+                return GDT_OK;
+            }
+        }
     }
-    
-    proc K::gdt_install() {
-        return 0;
+
+    proc K::gdt_load() -> UInt32 {
+        let code = gdt_set_descriptor(1);
+        if code == GDT_OK {
+            let data = gdt_set_descriptor(2);
+            if data == GDT_OK {
+                emit "xdv-boot: gdt loaded";
+                return GDT_OK;
+            } else {
+                return GDT_FAIL;
+            }
+        } else {
+            return GDT_FAIL;
+        }
+    }
+
+    proc K::gdt_install() -> UInt32 {
+        let init = gdt_init();
+        if init == GDT_OK {
+            let loaded = gdt_load();
+            if loaded == GDT_OK {
+                emit "xdv-boot: gdt install complete";
+                return GDT_OK;
+            } else {
+                return GDT_FAIL;
+            }
+        } else {
+            return GDT_FAIL;
+        }
     }
 }

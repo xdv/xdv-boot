@@ -1,31 +1,87 @@
 // XDV-Boot: XDVFS Mount
 
 forge BootXdvFsMount {
-    
+
     const XDVFS_MAGIC: UInt32 = 1479858246;
     const XDVFS_OFFSET: UInt64 = 2048;
     const XDVFS_VERSION: UInt16 = 1;
-    
+
     const ROOT_INODE: UInt64 = 2;
-    const SUPERBLOCK_BLOCK: UInt64 = 0;
-    
-    proc K::xdvfs_mount_init() {
-        return 0;
+    const SUPERBLOCK_BLOCK: UInt64 = 8;
+    const KERNEL_RELATIVE_LBA: UInt64 = 32;
+    const PRELOAD_RELATIVE_LBA: UInt64 = 128;
+
+    const DEVICE_MIN: UInt32 = 1;
+    const DEVICE_MAX: UInt32 = 4;
+    const MOUNT_OK: UInt32 = 0;
+    const MOUNT_FAIL: UInt32 = 1;
+    const VALID_SIGNATURE: UInt32 = 1;
+
+    proc K::xdvfs_mount_init() -> UInt32 {
+        emit "xdv-boot: xdvfs mount init";
+        let superblock_lba = xdvfs_read_superblock();
+        if superblock_lba >= XDVFS_OFFSET {
+            let valid = xdvfs_validate();
+            if valid == VALID_SIGNATURE {
+                let root = xdvfs_mount_root();
+                if root == MOUNT_OK {
+                    return MOUNT_OK;
+                } else {
+                    return MOUNT_FAIL;
+                }
+            } else {
+                return MOUNT_FAIL;
+            }
+        } else {
+            return MOUNT_FAIL;
+        }
     }
-    
-    proc K::xdvfs_read_superblock() {
-        return 0;
+
+    proc K::xdvfs_read_superblock() -> UInt64 {
+        emit "xdv-boot: reading xdvfs superblock";
+        return XDVFS_OFFSET + SUPERBLOCK_BLOCK;
     }
-    
-    proc K::xdvfs_validate() {
-        return 1;
+
+    proc K::xdvfs_validate() -> UInt32 {
+        emit "xdv-boot: validating xdvfs signature";
+        if XDVFS_MAGIC == 1479858246 {
+            if XDVFS_VERSION == 1 {
+                return VALID_SIGNATURE;
+            } else {
+                return MOUNT_FAIL;
+            }
+        } else {
+            return MOUNT_FAIL;
+        }
     }
-    
-    proc K::xdvfs_mount_root() {
-        return 0;
+
+    proc K::xdvfs_mount_root() -> UInt32 {
+        if ROOT_INODE == 2 {
+            emit "xdv-boot: mounting xdvfs root inode";
+            return MOUNT_OK;
+        } else {
+            return MOUNT_FAIL;
+        }
     }
-    
-    proc K::xdvfs_mount_device(device: UInt32) {
-        return 0;
+
+    proc K::xdvfs_mount_device(device: UInt32) -> UInt32 {
+        emit "xdv-boot: mounting xdvfs boot device";
+        if device < DEVICE_MIN {
+            return MOUNT_FAIL;
+        } else {
+            if device > DEVICE_MAX {
+                return MOUNT_FAIL;
+            } else {
+                return xdvfs_mount_init();
+            }
+        }
+    }
+
+    proc K::xdvfs_get_kernel_lba() -> UInt64 {
+        return XDVFS_OFFSET + KERNEL_RELATIVE_LBA;
+    }
+
+    proc K::xdvfs_get_preload_lba() -> UInt64 {
+        return XDVFS_OFFSET + PRELOAD_RELATIVE_LBA;
     }
 }

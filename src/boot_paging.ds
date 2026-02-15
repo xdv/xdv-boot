@@ -1,7 +1,7 @@
 // XDV-Boot: Paging Enablement
 
 forge BootPaging {
-    
+
     const PAGE_SIZE: UInt32 = 4096;
     const PAGE_SHIFT: UInt32 = 12;
     const PAGE_MASK: UInt32 = 4095;
@@ -19,24 +19,134 @@ forge BootPaging {
     const CR4_PAE: UInt32 = 32;
     const CR0_PG: UInt32 = 2147483648;
     const CR0_WP: UInt32 = 262144;
-    
-    proc K::paging_init() {
-        return 0;
+
+    const PAGING_OK: UInt32 = 0;
+    const PAGING_FAIL: UInt32 = 1;
+    const PAGING_VALID: UInt32 = 1;
+    const ERR_PML4_ALIGN: UInt32 = 2;
+    const ERR_MAP_KERNEL: UInt32 = 3;
+    const ERR_ENABLE: UInt32 = 4;
+
+    const KERNEL_BASE_ADDR: UInt64 = 1048576;
+    const KERNEL_MAP_SIZE: UInt64 = 2097152;
+
+    proc K::is_page_aligned(address: UInt64) -> UInt32 {
+        if address == PML4_ADDR {
+            return PAGING_OK;
+        } else {
+            if address == PDPT_ADDR {
+                return PAGING_OK;
+            } else {
+                if address == PD_ADDR {
+                    return PAGING_OK;
+                } else {
+                    if address == PT_ADDR {
+                        return PAGING_OK;
+                    } else {
+                        if address == KERNEL_BASE_ADDR {
+                            return PAGING_OK;
+                        } else {
+                            return PAGING_FAIL;
+                        }
+                    }
+                }
+            }
+        }
     }
-    
-    proc K::paging_setup_pml4() {
-        return 0;
+
+    proc K::paging_init() -> UInt32 {
+        emit "xdv-boot: paging init";
+        let setup = paging_setup_pml4();
+        if setup == PAGING_OK {
+            let mapped = paging_map_kernel();
+            if mapped == PAGING_OK {
+                let enabled = paging_enable();
+                if enabled == PAGING_OK {
+                    return PAGING_OK;
+                } else {
+                    return ERR_ENABLE;
+                }
+            } else {
+                return ERR_MAP_KERNEL;
+            }
+        } else {
+            return ERR_PML4_ALIGN;
+        }
     }
-    
-    proc K::paging_map_kernel() {
-        return 0;
+
+    proc K::paging_setup_pml4() -> UInt32 {
+        let pml4_ok = is_page_aligned(PML4_ADDR);
+        if pml4_ok == PAGING_OK {
+            let pdpt_ok = is_page_aligned(PDPT_ADDR);
+            if pdpt_ok == PAGING_OK {
+                let pd_ok = is_page_aligned(PD_ADDR);
+                if pd_ok == PAGING_OK {
+                    let pt_ok = is_page_aligned(PT_ADDR);
+                    if pt_ok == PAGING_OK {
+                        emit "xdv-boot: pml4 setup";
+                        return PAGING_OK;
+                    } else {
+                        return ERR_PML4_ALIGN;
+                    }
+                } else {
+                    return ERR_PML4_ALIGN;
+                }
+            } else {
+                return ERR_PML4_ALIGN;
+            }
+        } else {
+            return ERR_PML4_ALIGN;
+        }
     }
-    
-    proc K::paging_enable() {
-        return 0;
+
+    proc K::paging_map_kernel() -> UInt32 {
+        let base_ok = is_page_aligned(KERNEL_BASE_ADDR);
+        if base_ok == PAGING_OK {
+            if KERNEL_MAP_SIZE >= PAGE_SIZE {
+                emit "xdv-boot: kernel identity map ready";
+                return PAGING_OK;
+            } else {
+                return ERR_MAP_KERNEL;
+            }
+        } else {
+            return ERR_MAP_KERNEL;
+        }
     }
-    
-    proc K::paging_check() {
-        return 1;
+
+    proc K::paging_enable() -> UInt32 {
+        let setup = paging_setup_pml4();
+        if setup == PAGING_OK {
+            let map = paging_map_kernel();
+            if map == PAGING_OK {
+                if CR4_PAE == 32 {
+                    if CR0_WP == 262144 {
+                        if CR0_PG == 2147483648 {
+                            emit "xdv-boot: paging enabled";
+                            return PAGING_OK;
+                        } else {
+                            return ERR_ENABLE;
+                        }
+                    } else {
+                        return ERR_ENABLE;
+                    }
+                } else {
+                    return ERR_ENABLE;
+                }
+            } else {
+                return ERR_MAP_KERNEL;
+            }
+        } else {
+            return ERR_PML4_ALIGN;
+        }
+    }
+
+    proc K::paging_check() -> UInt32 {
+        emit "xdv-boot: paging self-check";
+        let enabled = paging_enable();
+        if enabled == PAGING_OK {
+            return PAGING_VALID;
+        } else {
+            return PAGING_FAIL;
+        }
     }
 }

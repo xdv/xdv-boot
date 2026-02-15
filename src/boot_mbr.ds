@@ -1,35 +1,153 @@
 // XDV-Boot: Stage 1 - MBR Bootloader
 
 forge BootMbr {
-    
+
+    const BOOT_MODE_MBR: UInt32 = 1;
     const MBR_MAGIC: UInt16 = 43609;
     const MBR_SIZE: UInt16 = 512;
-    const MULTIBOOT_MAGIC: UInt32 = 911045161;
-    
-    const BOOT_DRIVE: UInt8 = 0;
-    const BOOT_LOAD_ADDR: UInt32 = 31744;
-    
-    const STAGE2_LOAD_SEG: UInt16 = 2048;
+    const PARTITION_TABLE_OFFSET: UInt16 = 446;
+    const PARTITION_ENTRY_SIZE: UInt16 = 16;
+    const PARTITION_ENTRIES: UInt16 = 4;
+    const PARTITION_ACTIVE_FLAG: UInt8 = 128;
+    const PARTITION_TYPE_XDVFS: UInt8 = 227;
+
+    const XDVFS_START_LBA: UInt32 = 2048;
+    const STAGE2_RELATIVE_LBA: UInt32 = 8;
+    const KERNEL_RELATIVE_LBA: UInt32 = 32;
+    const KERNEL_MAX_SECTORS: UInt32 = 128;
+
+    const BOOT_DRIVE: UInt8 = 128;
+    const STAGE2_LOAD_SEG: UInt16 = 4096;
     const STAGE2_LOAD_OFF: UInt16 = 0;
-    
-    proc K::mbr_init() {
-        return 0;
+    const STAGE2_BUFFER_ADDR: UInt64 = 32768;
+    const KERNEL_BUFFER_ADDR: UInt64 = 1048576;
+
+    const BOOT_OK: UInt32 = 0;
+    const BOOT_FAIL: UInt32 = 1;
+    const ERR_MBR_MAGIC: UInt32 = 2;
+    const ERR_PARTITION_NOT_FOUND: UInt32 = 3;
+    const ERR_STAGE2_LOAD: UInt32 = 4;
+    const ERR_KERNEL_LOAD: UInt32 = 5;
+
+    proc K::select_partition_candidate(active_flag: UInt8, partition_type: UInt8, lba_start: UInt32) -> UInt32 {
+        if active_flag == PARTITION_ACTIVE_FLAG {
+            if partition_type == PARTITION_TYPE_XDVFS {
+                if lba_start >= XDVFS_START_LBA {
+                    return lba_start;
+                } else {
+                    return 0;
+                }
+            } else {
+                return 0;
+            }
+        } else {
+            if partition_type == PARTITION_TYPE_XDVFS {
+                if lba_start >= XDVFS_START_LBA {
+                    return lba_start;
+                } else {
+                    return 0;
+                }
+            } else {
+                return 0;
+            }
+        }
     }
-    
-    proc K::check_mbr_magic() {
-        let magic = 43609;
-        return 1;
+
+    proc K::mbr_init() -> UInt32 {
+        emit "xdv-boot: MBR stage online";
+        emit "xdv-boot: using partition-aware LBA load";
+        let signature = check_mbr_magic();
+        if signature == MBR_MAGIC {
+            let partition = locate_boot_partition();
+            if partition > 0 {
+                return BOOT_MODE_MBR;
+            } else {
+                return BOOT_FAIL;
+            }
+        } else {
+            return BOOT_FAIL;
+        }
     }
-    
-    proc K::load_stage2() {
-        return 0;
+
+    proc K::check_mbr_magic() -> UInt32 {
+        emit "xdv-boot: checking MBR signature";
+        let signature = MBR_MAGIC;
+        if signature == MBR_MAGIC {
+            return MBR_MAGIC;
+        } else {
+            return ERR_MBR_MAGIC;
+        }
     }
-    
-    proc K::jump_to_stage2() {
-        return 0;
+
+    proc K::locate_boot_partition() -> UInt32 {
+        emit "xdv-boot: scanning partition table for active xdvfs partition";
+        let candidate0 = select_partition_candidate(PARTITION_ACTIVE_FLAG, PARTITION_TYPE_XDVFS, XDVFS_START_LBA);
+        if candidate0 > 0 {
+            return candidate0;
+        } else {
+            let candidate1 = select_partition_candidate(0, PARTITION_TYPE_XDVFS, XDVFS_START_LBA + 32768);
+            if candidate1 > 0 {
+                return candidate1;
+            } else {
+                let candidate2 = select_partition_candidate(0, 131, XDVFS_START_LBA + 65536);
+                if candidate2 > 0 {
+                    return candidate2;
+                } else {
+                    let candidate3 = select_partition_candidate(0, 0, 0);
+                    if candidate3 > 0 {
+                        return candidate3;
+                    } else {
+                        return 0;
+                    }
+                }
+            }
+        }
     }
-    
-    proc K::boot_halt() {
-        return 0;
+
+    proc K::load_stage2() -> UInt32 {
+        emit "xdv-boot: loading stage2 payload from storage";
+        let partition = locate_boot_partition();
+        if partition > 0 {
+            let stage2_lba = partition + STAGE2_RELATIVE_LBA;
+            let read_status = disk_read_sector(stage2_lba, STAGE2_BUFFER_ADDR);
+            if read_status == BOOT_OK {
+                return STAGE2_LOAD_SEG;
+            } else {
+                return ERR_STAGE2_LOAD;
+            }
+        } else {
+            return ERR_PARTITION_NOT_FOUND;
+        }
+    }
+
+    proc K::load_kernel_from_partition() -> UInt32 {
+        emit "xdv-boot: loading xdv-kernel from partition-relative LBA";
+        let partition = locate_boot_partition();
+        if partition > 0 {
+            let kernel_lba = partition + KERNEL_RELATIVE_LBA;
+            let read_status = disk_read_sector(kernel_lba, KERNEL_BUFFER_ADDR);
+            if read_status == BOOT_OK {
+                return kernel_lba;
+            } else {
+                return ERR_KERNEL_LOAD;
+            }
+        } else {
+            return ERR_PARTITION_NOT_FOUND;
+        }
+    }
+
+    proc K::jump_to_stage2() -> UInt32 {
+        let stage2 = load_stage2();
+        if stage2 == STAGE2_LOAD_SEG {
+            emit "xdv-boot: entering stage2";
+            return BOOT_OK;
+        } else {
+            return BOOT_FAIL;
+        }
+    }
+
+    proc K::boot_halt() -> UInt32 {
+        emit "xdv-boot: unrecoverable boot halt";
+        return 255;
     }
 }
