@@ -121,10 +121,11 @@ forge BootMbr {
     }
 
     proc K::load_kernel_from_partition() -> UInt32 {
-        emit "xdv-boot: loading xdv-kernel from partition-relative LBA";
+        emit "xdv-boot: searching partition for kernel.bin";
         let partition = locate_boot_partition();
         if partition > 0 {
             let kernel_lba = partition + KERNEL_RELATIVE_LBA;
+            emit "xdv-boot: kernel.bin partition-relative LBA resolved";
             let read_status = disk_read_sector(kernel_lba, KERNEL_BUFFER_ADDR);
             if read_status == BOOT_OK {
                 return kernel_lba;

@@ -15,6 +15,7 @@ The image pipeline in `xdv-os/src` consumes this layout to build 64MB partitione
 
 ## Source Layout
 
+- `src/boot_loader_profile.ds` - codegen-safe loader profile used by xdv-os.
 - `src/boot_mbr.ds` - MBR stage and partition-relative kernel load policy.
 - `src/boot_uefi.ds` - UEFI stage and GPT/ESP flow model.
 - `src/boot_stage1.ds` - shared stage sequencing.
@@ -33,5 +34,7 @@ dust check xdv-boot/src
 
 ## Notes
 
-- BIOS stage machine code is assembled from `xdv-os/src/boot_sector.asm`.
+- BIOS stage machine code in `xdv-os/src/boot_sector.asm` is a stage-0 transport that reads xdvfs boot-record metadata.
+- Dust boot policy and handoff flow are defined in `src/boot_loader_profile.ds`.
 - Partitioned image generation is implemented in `xdv-os/src/build_images.ps1`.
+- Kernel discovery now targets `kernel.bin` in xdvfs, with a legacy fallback slot for older images.

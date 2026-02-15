@@ -4,7 +4,6 @@ forge BootKernelLoad {
 
     const KERNEL_LOAD_ADDR: UInt32 = 1048576;
     const KERNEL_ENTRY_ADDR: UInt32 = 1048576;
-    const KERNEL_RELATIVE_LBA: UInt32 = 32;
     const KERNEL_MAX_SECTORS: UInt32 = 128;
     const KERNEL_MAX_SIZE: UInt32 = 16777216;
     const SECTOR_SIZE: UInt32 = 512;
@@ -50,7 +49,7 @@ forge BootKernelLoad {
     }
 
     proc K::kernel_read_header() -> UInt32 {
-        emit "xdv-boot: reading kernel image header";
+        emit "xdv-boot: reading kernel.bin image header";
         let kernel_lba = xdvfs_get_kernel_lba();
         if kernel_lba > 0 {
             let read_status = disk_read_sector(kernel_lba, KERNEL_LOAD_BUFFER);
@@ -65,7 +64,7 @@ forge BootKernelLoad {
     }
 
     proc K::kernel_validate_elf() -> UInt32 {
-        emit "xdv-boot: validating kernel image";
+        emit "xdv-boot: validating kernel.bin image";
         if ELF_MAGIC == 1179403647 {
             if ELF_CLASS_64 == 2 {
                 if ELF_DATA_LSB == 1 {
@@ -90,10 +89,10 @@ forge BootKernelLoad {
     }
 
     proc K::kernel_load_segments() -> UInt32 {
-        emit "xdv-boot: loading kernel sectors into memory";
+        emit "xdv-boot: loading kernel.bin sectors into memory";
         let window = kernel_get_sector_window();
         if window >= KERNEL_SEGMENT_COUNT {
-            let first_segment_lba = xdvfs_get_kernel_lba() + KERNEL_RELATIVE_LBA;
+            let first_segment_lba = xdvfs_get_kernel_lba();
             let read_status = disk_read_sector(first_segment_lba, KERNEL_LOAD_BUFFER);
             if read_status == LOAD_OK {
                 return KERNEL_SEGMENT_COUNT;
@@ -127,7 +126,7 @@ forge BootKernelLoad {
     proc K::kernel_jump_to_entry() -> UInt32 {
         let entry = kernel_get_entry();
         if entry == KERNEL_ENTRY_ADDR {
-            emit "xdv-boot: handoff to xdv-kernel";
+            emit "xdv-boot: handoff to kernel.bin";
             return LOAD_OK;
         } else {
             return ERR_BAD_ENTRY;

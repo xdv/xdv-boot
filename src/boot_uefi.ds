@@ -88,7 +88,7 @@ forge BootUefi {
     }
 
     proc K::uefi_load_kernel_from_xdvfs() -> UInt32 {
-        emit "xdv-boot: loading xdv-kernel from xdvfs partition";
+        emit "xdv-boot: searching xdvfs for kernel.bin";
         let kernel_lba = xdvfs_get_kernel_lba();
         if kernel_lba > 0 {
             let read_status = disk_read_sector(kernel_lba, EFI_KERNEL_BUFFER);
@@ -107,7 +107,7 @@ forge BootUefi {
         if load_status == BOOT_OK {
             let handoff = kernel_jump_to_entry();
             if handoff == BOOT_OK {
-                emit "xdv-boot: UEFI handoff to xdv-kernel";
+                emit "xdv-boot: UEFI handoff to kernel.bin";
                 return BOOT_OK;
             } else {
                 return BOOT_FAIL;

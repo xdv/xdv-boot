@@ -8,14 +8,18 @@ forge BootXdvFsMount {
 
     const ROOT_INODE: UInt64 = 2;
     const SUPERBLOCK_BLOCK: UInt64 = 8;
-    const KERNEL_RELATIVE_LBA: UInt64 = 32;
+    const KERNEL_BIN_RELATIVE_LBA: UInt64 = 32;
+    const LEGACY_KERNEL_RELATIVE_LBA: UInt64 = 32;
     const PRELOAD_RELATIVE_LBA: UInt64 = 128;
+    const KERNEL_NAME_KERNEL_BIN: UInt32 = 1;
+    const KERNEL_NAME_LEGACY_XDV_KERNEL: UInt32 = 2;
 
     const DEVICE_MIN: UInt32 = 1;
     const DEVICE_MAX: UInt32 = 4;
     const MOUNT_OK: UInt32 = 0;
     const MOUNT_FAIL: UInt32 = 1;
     const VALID_SIGNATURE: UInt32 = 1;
+    const KERNEL_NOT_FOUND: UInt64 = 0;
 
     proc K::xdvfs_mount_init() -> UInt32 {
         emit "xdv-boot: xdvfs mount init";
@@ -77,8 +81,35 @@ forge BootXdvFsMount {
         }
     }
 
+    proc K::xdvfs_lookup_kernel_slot(name_id: UInt32) -> UInt64 {
+        if name_id == KERNEL_NAME_KERNEL_BIN {
+            return XDVFS_OFFSET + KERNEL_BIN_RELATIVE_LBA;
+        } else {
+            if name_id == KERNEL_NAME_LEGACY_XDV_KERNEL {
+                return XDVFS_OFFSET + LEGACY_KERNEL_RELATIVE_LBA;
+            } else {
+                return KERNEL_NOT_FOUND;
+            }
+        }
+    }
+
     proc K::xdvfs_get_kernel_lba() -> UInt64 {
-        return XDVFS_OFFSET + KERNEL_RELATIVE_LBA;
+        emit "xdv-boot: xdvfs lookup kernel.bin";
+        let kernel_bin_lba = xdvfs_lookup_kernel_slot(KERNEL_NAME_KERNEL_BIN);
+        if kernel_bin_lba > 0 {
+            emit "xdv-boot: kernel.bin located in xdvfs";
+            return kernel_bin_lba;
+        } else {
+            emit "xdv-boot: kernel.bin not found, trying legacy kernel slot";
+            let legacy_lba = xdvfs_lookup_kernel_slot(KERNEL_NAME_LEGACY_XDV_KERNEL);
+            if legacy_lba > 0 {
+                emit "xdv-boot: legacy kernel slot located";
+                return legacy_lba;
+            } else {
+                emit "xdv-boot: no kernel image located in xdvfs";
+                return KERNEL_NOT_FOUND;
+            }
+        }
     }
 
     proc K::xdvfs_get_preload_lba() -> UInt64 {
