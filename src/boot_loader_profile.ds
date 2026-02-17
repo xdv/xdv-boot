@@ -1,59 +1,9 @@
-// XDV-Boot: codegen-safe loader profile for xdv-os boot orchestration.
+// XDV-Boot legacy loader profile entry kept for compatibility.
 
 forge BootLoaderProfile {
-
     const BOOT_OK: UInt32 = 0;
-    const BOOT_PROFILE_VERSION: UInt32 = 3;
-    const XDVFS_IMAGE_SIZE_MB: UInt32 = 64;
-    const XDVFS_PARTITION_START_LBA: UInt32 = 2048;
-    const XDVFS_SUPERBLOCK_REL_LBA: UInt32 = 8;
-    const XDVFS_KERNEL_REL_LBA: UInt32 = 32;
-    const XDVFS_PRELOAD_REL_LBA: UInt32 = 128;
-    const KERNEL_IMAGE_ID_KERNEL_BIN: UInt32 = 1;
-    const KERNEL_IMAGE_ID_LEGACY_XDV_KERNEL: UInt32 = 2;
 
-    proc K::boot_loader_main() -> UInt32 {
-        emit "xdv-boot: loader profile online";
-        emit "xdv-boot: boot mode auto-detect (MBR/UEFI)";
-        boot_loader_detect_mode();
-        boot_loader_mount_xdvfs();
-        boot_loader_load_kernel();
-        boot_loader_handoff_kernel();
-        return BOOT_OK;
-    }
-
-    proc K::boot_loader_detect_mode() -> UInt32 {
-        emit "xdv-boot: probing MBR path";
-        emit "xdv-boot: probing UEFI path";
-        emit "xdv-boot: selected available firmware path";
-        return BOOT_OK;
-    }
-
-    proc K::boot_loader_mount_xdvfs() -> UInt32 {
-        emit "xdv-boot: mounting xdvfs boot partition";
-        emit "xdv-boot: xdvfs partition start LBA = 2048";
-        emit "xdv-boot: xdvfs superblock rel LBA = 8";
-        return BOOT_OK;
-    }
-
-    proc K::boot_loader_load_kernel() -> UInt32 {
-        emit "xdv-boot: searching xdvfs for kernel.bin";
-        if KERNEL_IMAGE_ID_KERNEL_BIN == 1 {
-            emit "xdv-boot: kernel.bin rel LBA = 32";
-        } else {
-            if KERNEL_IMAGE_ID_LEGACY_XDV_KERNEL == 2 {
-                emit "xdv-boot: fallback legacy kernel slot selected";
-            } else {
-                emit "xdv-boot: kernel slot resolution failed";
-            }
-        }
-        emit "xdv-boot: preload rel LBA = 128";
-        return BOOT_OK;
-    }
-
-    proc K::boot_loader_handoff_kernel() -> UInt32 {
-        emit "xdv-boot: handoff to kernel.bin entry";
-        emit "xdv-boot: xdvfs image profile = 64MB";
+    proc K::boot_loader_detect_mode(depth: UInt32) -> UInt32 {
         return BOOT_OK;
     }
 }
