@@ -3,12 +3,23 @@
 forge BootLoaderProfile {
     const BOOT_MODE_MBR: UInt32 = 1;
     const BOOT_MODE_UEFI: UInt32 = 2;
+    const BOOT_MODE_UNKNOWN: UInt32 = 0;
 
     proc K::boot_loader_detect_mode(depth: UInt32) -> UInt32 {
-        mbr_init();
-        uefi_stage_init();
-        emit "xdv-boot: boot mode auto-detect (MBR/UEFI)";
-        emit "xdv-boot: selected available firmware path";
-        return BOOT_MODE_MBR + depth - depth;
+        let mbr = mbr_init();
+        emit "xdv-boot: boot mode detect (MBR/UEFI)";
+        if mbr == BOOT_MODE_MBR {
+            emit "xdv-boot: recognized loader origin = MBR";
+            return BOOT_MODE_MBR + depth - depth;
+        } else {
+            let uefi = uefi_stage_init();
+            if uefi == BOOT_MODE_UEFI {
+                emit "xdv-boot: recognized loader origin = UEFI";
+                return BOOT_MODE_UEFI + depth - depth;
+            } else {
+                emit "xdv-boot: firmware origin unknown, defaulting to MBR profile";
+                return BOOT_MODE_UNKNOWN + BOOT_MODE_MBR - BOOT_MODE_UNKNOWN;
+            }
+        }
     }
 }

@@ -13,7 +13,7 @@ forge BootMbr {
 
     const XDVFS_START_LBA: UInt32 = 2048;
     const STAGE2_RELATIVE_LBA: UInt32 = 8;
-    const KERNEL_RELATIVE_LBA: UInt32 = 32;
+    const KERNEL_RELATIVE_LBA: UInt32 = 160;
     const KERNEL_MAX_SECTORS: UInt32 = 128;
 
     const BOOT_DRIVE: UInt8 = 128;
@@ -121,11 +121,11 @@ forge BootMbr {
     }
 
     proc K::load_kernel_from_partition() -> UInt32 {
-        emit "xdv-boot: searching partition for kernel.bin";
+        emit "xdv-boot: searching partition for /console/kernel.bin";
         let partition = locate_boot_partition();
         if partition > 0 {
             let kernel_lba = partition + KERNEL_RELATIVE_LBA;
-            emit "xdv-boot: kernel.bin partition-relative LBA resolved";
+            emit "xdv-boot: /console/kernel.bin partition-relative LBA resolved";
             let read_status = disk_read_sector(kernel_lba, KERNEL_BUFFER_ADDR);
             if read_status == BOOT_OK {
                 return kernel_lba;

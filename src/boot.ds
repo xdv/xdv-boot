@@ -1,68 +1,75 @@
 // XDV-Boot canonical boot.bin flow for xdv-os:
-// splash -> wait 8 seconds -> probe MBR/UEFI -> locate/load kernel.bin -> handoff
+// splash -> wait 8 seconds -> recognize MBR/UEFI origin -> load /console/kernel.bin -> handoff
 
 forge XdvBoot {
 
     const BOOT_OK: UInt32 = 0;
+    const BOOT_FAIL: UInt32 = 1;
     const BOOT_DEVICE: UInt32 = 1;
     const MODE_DETECT_DEPTH: UInt32 = 2;
+    const BOOT_MODE_MBR: UInt32 = 1;
+    const BOOT_MODE_UEFI: UInt32 = 2;
 
     proc K::boot_main() -> UInt32 {
         boot_splash_contract();
         boot_wait_splash_window();
-        boot_loader_detect_mode(MODE_DETECT_DEPTH);
-        boot_probe_firmware_paths();
-        boot_locate_and_load_kernel();
-        boot_kernel_handoff();
-        return BOOT_OK;
+        let mode = boot_probe_firmware_origin();
+        let loaded = boot_locate_and_load_kernel(mode);
+        if loaded == BOOT_OK {
+            boot_kernel_handoff();
+            return BOOT_OK;
+        } else {
+            return BOOT_FAIL;
+        }
     }
 
     proc K::boot_wait_splash_window() -> UInt32 {
-        emit "xdv-boot: splash hold second 1/8";
-        emit "xdv-boot: splash hold second 2/8";
-        emit "xdv-boot: splash hold second 3/8";
-        emit "xdv-boot: splash hold second 4/8";
-        emit "xdv-boot: splash hold second 5/8";
-        emit "xdv-boot: splash hold second 6/8";
-        emit "xdv-boot: splash hold second 7/8";
-        emit "xdv-boot: splash hold second 8/8";
+        emit "xdv-boot: delegating splash window to xdv-lib";
+        xdv_boot_prepare(8);
         return BOOT_OK;
     }
 
-    proc K::boot_probe_firmware_paths() -> UInt32 {
-        emit "xdv-boot: probing MBR path";
-        mbr_init();
-        emit "xdv-boot: probing UEFI path";
-        uefi_stage_init();
-        emit "xdv-boot: firmware candidates mbr=1 uefi=2";
-        emit "xdv-boot: active firmware mode = mbr";
-        return BOOT_OK;
+    proc K::boot_probe_firmware_origin() -> UInt32 {
+        let mode = boot_loader_detect_mode(MODE_DETECT_DEPTH);
+        if mode == BOOT_MODE_UEFI {
+            emit "xdv-boot: boot.bin origin recognized as UEFI";
+            return BOOT_MODE_UEFI;
+        } else {
+            emit "xdv-boot: boot.bin origin recognized as MBR";
+            return BOOT_MODE_MBR;
+        }
     }
 
-    proc K::boot_locate_and_load_kernel() -> UInt32 {
-        boot_locate_and_load_kernel_mbr();
-        boot_locate_and_load_kernel_uefi();
-        return BOOT_OK;
+    proc K::boot_locate_and_load_kernel(mode: UInt32) -> UInt32 {
+        if mode == BOOT_MODE_UEFI {
+            emit "xdv-boot: UEFI mode confirmed; kernel lookup remains xdvfs:/console/kernel.bin";
+        } else {
+            emit "xdv-boot: MBR mode confirmed; kernel lookup remains xdvfs:/console/kernel.bin";
+        }
+        return boot_load_console_kernel();
     }
 
-    proc K::boot_locate_and_load_kernel_mbr() -> UInt32 {
+    proc K::boot_load_console_kernel() -> UInt32 {
         emit "xdv-boot: mounting xdvfs boot partition";
-        xdvfs_mount_device(BOOT_DEVICE);
-        xdvfs_get_kernel_lba();
-        kernel_load_init();
-        return BOOT_OK;
-    }
-
-    proc K::boot_locate_and_load_kernel_uefi() -> UInt32 {
-        uefi_stage_init();
-        uefi_load_kernel_from_xdvfs();
-        return BOOT_OK;
+        let mounted = xdvfs_mount_device(BOOT_DEVICE);
+        if mounted == BOOT_OK {
+            let kernel_lba = xdvfs_get_console_kernel_lba();
+            if kernel_lba > 0 {
+                emit "xdv-boot: loading kernel from xdvfs:/console/kernel.bin";
+                return kernel_load_from_lba(kernel_lba);
+            } else {
+                emit "xdv-boot: /console/kernel.bin not found";
+                return BOOT_FAIL;
+            }
+        } else {
+            emit "xdv-boot: xdvfs mount failed";
+            return BOOT_FAIL;
+        }
     }
 
     proc K::boot_kernel_handoff() -> UInt32 {
-        kernel_jump_to_entry();
-        uefi_handoff_kernel();
-        emit "xdv-boot: handoff to kernel.bin";
+        emit "xdv-boot: handoff to /console/kernel.bin";
+        xdv_boot_transfer_kernel();
         return BOOT_OK;
     }
 }

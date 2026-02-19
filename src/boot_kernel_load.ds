@@ -29,12 +29,21 @@ forge BootKernelLoad {
     const ERR_BAD_ENTRY: UInt32 = 5;
 
     proc K::kernel_load_init() -> UInt32 {
+        let kernel_lba = xdvfs_get_console_kernel_lba();
+        if kernel_lba > 0 {
+            return kernel_load_from_lba(kernel_lba);
+        } else {
+            return ERR_HEADER_READ;
+        }
+    }
+
+    proc K::kernel_load_from_lba(kernel_lba: UInt64) -> UInt32 {
         emit "xdv-boot: kernel loader init";
-        let header = kernel_read_header();
+        let header = kernel_read_header(kernel_lba);
         if header == LOAD_OK {
             let valid = kernel_validate_elf();
             if valid == VALID_ELF {
-                let segments = kernel_load_segments();
+                let segments = kernel_load_segments(kernel_lba);
                 if segments > 0 {
                     return LOAD_OK;
                 } else {
@@ -48,9 +57,8 @@ forge BootKernelLoad {
         }
     }
 
-    proc K::kernel_read_header() -> UInt32 {
-        emit "xdv-boot: reading kernel.bin image header";
-        let kernel_lba = xdvfs_get_kernel_lba();
+    proc K::kernel_read_header(kernel_lba: UInt64) -> UInt32 {
+        emit "xdv-boot: reading /console/kernel.bin image header";
         if kernel_lba > 0 {
             let read_status = disk_read_sector(kernel_lba, KERNEL_LOAD_BUFFER);
             if read_status == LOAD_OK {
@@ -88,12 +96,11 @@ forge BootKernelLoad {
         }
     }
 
-    proc K::kernel_load_segments() -> UInt32 {
-        emit "xdv-boot: loading kernel.bin sectors into memory";
+    proc K::kernel_load_segments(kernel_lba: UInt64) -> UInt32 {
+        emit "xdv-boot: loading /console/kernel.bin sectors into memory";
         let window = kernel_get_sector_window();
         if window >= KERNEL_SEGMENT_COUNT {
-            let first_segment_lba = xdvfs_get_kernel_lba();
-            let read_status = disk_read_sector(first_segment_lba, KERNEL_LOAD_BUFFER);
+            let read_status = disk_read_sector(kernel_lba, KERNEL_LOAD_BUFFER);
             if read_status == LOAD_OK {
                 return KERNEL_SEGMENT_COUNT;
             } else {

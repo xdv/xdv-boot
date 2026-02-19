@@ -8,11 +8,11 @@ forge BootXdvFsMount {
 
     const ROOT_INODE: UInt64 = 2;
     const SUPERBLOCK_BLOCK: UInt64 = 8;
-    const KERNEL_BIN_RELATIVE_LBA: UInt64 = 32;
-    const LEGACY_KERNEL_RELATIVE_LBA: UInt64 = 32;
-    const PRELOAD_RELATIVE_LBA: UInt64 = 128;
-    const KERNEL_NAME_KERNEL_BIN: UInt32 = 1;
-    const KERNEL_NAME_LEGACY_XDV_KERNEL: UInt32 = 2;
+    const CONSOLE_KERNEL_RELATIVE_LBA: UInt64 = 160;
+    const PRELOAD_RELATIVE_LBA: UInt64 = 288;
+    const PATH_NODE_ROOT: UInt32 = 1;
+    const PATH_NODE_CONSOLE: UInt32 = 2;
+    const PATH_NODE_KERNEL_BIN: UInt32 = 3;
 
     const DEVICE_MIN: UInt32 = 1;
     const DEVICE_MAX: UInt32 = 4;
@@ -82,34 +82,53 @@ forge BootXdvFsMount {
     }
 
     proc K::xdvfs_lookup_kernel_slot(name_id: UInt32) -> UInt64 {
-        if name_id == KERNEL_NAME_KERNEL_BIN {
-            return XDVFS_OFFSET + KERNEL_BIN_RELATIVE_LBA;
+        if name_id == PATH_NODE_KERNEL_BIN {
+            return XDVFS_OFFSET + CONSOLE_KERNEL_RELATIVE_LBA;
         } else {
-            if name_id == KERNEL_NAME_LEGACY_XDV_KERNEL {
-                return XDVFS_OFFSET + LEGACY_KERNEL_RELATIVE_LBA;
+            return KERNEL_NOT_FOUND;
+        }
+    }
+
+    proc K::xdvfs_lookup_path(parent: UInt32, child: UInt32) -> UInt64 {
+        if parent == PATH_NODE_ROOT {
+            if child == PATH_NODE_CONSOLE {
+                return XDVFS_OFFSET + SUPERBLOCK_BLOCK;
+            } else {
+                return KERNEL_NOT_FOUND;
+            }
+        } else {
+            if parent == PATH_NODE_CONSOLE {
+                if child == PATH_NODE_KERNEL_BIN {
+                    return xdvfs_lookup_kernel_slot(PATH_NODE_KERNEL_BIN);
+                } else {
+                    return KERNEL_NOT_FOUND;
+                }
             } else {
                 return KERNEL_NOT_FOUND;
             }
         }
     }
 
-    proc K::xdvfs_get_kernel_lba() -> UInt64 {
-        emit "xdv-boot: xdvfs lookup kernel.bin";
-        let kernel_bin_lba = xdvfs_lookup_kernel_slot(KERNEL_NAME_KERNEL_BIN);
-        if kernel_bin_lba > 0 {
-            emit "xdv-boot: kernel.bin located in xdvfs";
-            return kernel_bin_lba;
-        } else {
-            emit "xdv-boot: kernel.bin not found, trying legacy kernel slot";
-            let legacy_lba = xdvfs_lookup_kernel_slot(KERNEL_NAME_LEGACY_XDV_KERNEL);
-            if legacy_lba > 0 {
-                emit "xdv-boot: legacy kernel slot located";
-                return legacy_lba;
+    proc K::xdvfs_get_console_kernel_lba() -> UInt64 {
+        emit "xdv-boot: xdvfs lookup /console/kernel.bin";
+        let console_dir = xdvfs_lookup_path(PATH_NODE_ROOT, PATH_NODE_CONSOLE);
+        if console_dir > 0 {
+            let kernel_lba = xdvfs_lookup_path(PATH_NODE_CONSOLE, PATH_NODE_KERNEL_BIN);
+            if kernel_lba > 0 {
+                emit "xdv-boot: /console/kernel.bin located in xdvfs";
+                return kernel_lba;
             } else {
                 emit "xdv-boot: no kernel image located in xdvfs";
                 return KERNEL_NOT_FOUND;
             }
+        } else {
+            emit "xdv-boot: /console directory missing in xdvfs";
+            return KERNEL_NOT_FOUND;
         }
+    }
+
+    proc K::xdvfs_get_kernel_lba() -> UInt64 {
+        return xdvfs_get_console_kernel_lba();
     }
 
     proc K::xdvfs_get_preload_lba() -> UInt64 {
