@@ -1,6 +1,6 @@
 // XDV-Boot splash path for xdv-os integration.
 
-forge XdvBoot {
+forge XdvBootSplashProfile {
     const BOOT_OK: UInt32 = 0;
 
     proc K::boot_splash_contract() -> UInt32 {

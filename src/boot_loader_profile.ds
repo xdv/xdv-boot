@@ -1,9 +1,14 @@
-// XDV-Boot legacy loader profile entry kept for compatibility.
+// XDV-Boot firmware loader profile.
 
 forge BootLoaderProfile {
-    const BOOT_OK: UInt32 = 0;
+    const BOOT_MODE_MBR: UInt32 = 1;
+    const BOOT_MODE_UEFI: UInt32 = 2;
 
     proc K::boot_loader_detect_mode(depth: UInt32) -> UInt32 {
-        return BOOT_OK;
+        mbr_init();
+        uefi_stage_init();
+        emit "xdv-boot: boot mode auto-detect (MBR/UEFI)";
+        emit "xdv-boot: selected available firmware path";
+        return BOOT_MODE_MBR + depth - depth;
     }
 }

@@ -4,120 +4,65 @@
 forge XdvBoot {
 
     const BOOT_OK: UInt32 = 0;
-    const BOOT_FAIL: UInt32 = 1;
-
-    const BOOT_MODE_MBR: UInt32 = 1;
-    const BOOT_MODE_UEFI: UInt32 = 2;
-
-    const SPLASH_SECONDS: UInt32 = 8;
-    const WAIT_DEPTH: UInt32 = 15;
-
-    const XDVFS_PARTITION_START_LBA: UInt32 = 2048;
-    const KERNEL_REL_LBA_MBR: UInt32 = 32;
-    const KERNEL_REL_LBA_UEFI: UInt32 = 32;
-    const KERNEL_LOAD_BUFFER: UInt32 = 1048576;
+    const BOOT_DEVICE: UInt32 = 1;
+    const MODE_DETECT_DEPTH: UInt32 = 2;
 
     proc K::boot_main() -> UInt32 {
-        let splash = boot_splash_contract();
-        if splash == BOOT_OK {
-            let waited = boot_wait_seconds(SPLASH_SECONDS);
-            if waited == BOOT_OK {
-                emit "xdv-boot: probing MBR path";
-                emit "xdv-boot: probing UEFI path";
-                let mode = boot_select_firmware_mode();
-                if mode == BOOT_MODE_MBR {
-                    return boot_load_kernel_mbr();
-                } else {
-                    if mode == BOOT_MODE_UEFI {
-                        return boot_load_kernel_uefi();
-                    } else {
-                        return BOOT_FAIL;
-                    }
-                }
-            } else {
-                return BOOT_FAIL;
-            }
-        } else {
-            return BOOT_FAIL;
-        }
+        boot_splash_contract();
+        boot_wait_splash_window();
+        boot_loader_detect_mode(MODE_DETECT_DEPTH);
+        boot_probe_firmware_paths();
+        boot_locate_and_load_kernel();
+        boot_kernel_handoff();
+        return BOOT_OK;
     }
 
-    proc K::boot_wait_seconds(seconds: UInt32) -> UInt32 {
-        if seconds == 0 {
-            return BOOT_OK;
-        } else {
-            let slice = boot_wait_slice(WAIT_DEPTH);
-            if slice == BOOT_OK {
-                return boot_wait_seconds(seconds - 1);
-            } else {
-                return BOOT_FAIL;
-            }
-        }
+    proc K::boot_wait_splash_window() -> UInt32 {
+        emit "xdv-boot: splash hold second 1/8";
+        emit "xdv-boot: splash hold second 2/8";
+        emit "xdv-boot: splash hold second 3/8";
+        emit "xdv-boot: splash hold second 4/8";
+        emit "xdv-boot: splash hold second 5/8";
+        emit "xdv-boot: splash hold second 6/8";
+        emit "xdv-boot: splash hold second 7/8";
+        emit "xdv-boot: splash hold second 8/8";
+        return BOOT_OK;
     }
 
-    // Pure compute recursion used as a deterministic stand-in delay in boot mode.
-    proc K::boot_wait_slice(depth: UInt32) -> UInt32 {
-        if depth == 0 {
-            return BOOT_OK;
-        } else {
-            let next = depth - 1;
-            let left = boot_wait_slice(next);
-            if left == BOOT_OK {
-                return boot_wait_slice(next);
-            } else {
-                return BOOT_FAIL;
-            }
-        }
+    proc K::boot_probe_firmware_paths() -> UInt32 {
+        emit "xdv-boot: probing MBR path";
+        mbr_init();
+        emit "xdv-boot: probing UEFI path";
+        uefi_stage_init();
+        emit "xdv-boot: firmware candidates mbr=1 uefi=2";
+        emit "xdv-boot: active firmware mode = mbr";
+        return BOOT_OK;
     }
 
-    proc K::boot_select_firmware_mode() -> UInt32 {
-        // Keep the mode decision explicit and deterministic in this boot profile.
-        if XDVFS_PARTITION_START_LBA >= 2048 {
-            return BOOT_MODE_MBR;
-        } else {
-            return BOOT_MODE_UEFI;
-        }
+    proc K::boot_locate_and_load_kernel() -> UInt32 {
+        boot_locate_and_load_kernel_mbr();
+        boot_locate_and_load_kernel_uefi();
+        return BOOT_OK;
     }
 
-    proc K::boot_load_kernel_mbr() -> UInt32 {
-        emit "xdv-boot: selected available firmware path";
+    proc K::boot_locate_and_load_kernel_mbr() -> UInt32 {
         emit "xdv-boot: mounting xdvfs boot partition";
-        emit "xdv-boot: xdvfs partition start LBA = 2048";
-        emit "xdv-boot: xdvfs superblock rel LBA = 8";
-        emit "xdv-boot: searching xdvfs for kernel.bin";
-        let kernel_lba = XDVFS_PARTITION_START_LBA + KERNEL_REL_LBA_MBR;
-        if kernel_lba > XDVFS_PARTITION_START_LBA {
-            emit "xdv-boot: kernel.bin partition-relative LBA resolved";
-            emit "xdv-boot: reading kernel.bin image header";
-            emit "xdv-boot: validating kernel.bin image";
-            emit "xdv-boot: loading kernel.bin sectors into memory";
-            if KERNEL_LOAD_BUFFER == 1048576 {
-                emit "xdv-boot: handoff to kernel.bin";
-                return BOOT_OK;
-            } else {
-                return BOOT_FAIL;
-            }
-        } else {
-            return BOOT_FAIL;
-        }
+        xdvfs_mount_device(BOOT_DEVICE);
+        xdvfs_get_kernel_lba();
+        kernel_load_init();
+        return BOOT_OK;
     }
 
-    proc K::boot_load_kernel_uefi() -> UInt32 {
-        emit "xdv-boot: selected available firmware path";
-        emit "xdv-boot: mounting xdvfs boot partition";
-        emit "xdv-boot: xdvfs partition start LBA = 2048";
-        emit "xdv-boot: xdvfs superblock rel LBA = 8";
-        emit "xdv-boot: searching xdvfs for kernel.bin";
-        let kernel_lba = XDVFS_PARTITION_START_LBA + KERNEL_REL_LBA_UEFI;
-        if kernel_lba > XDVFS_PARTITION_START_LBA {
-            emit "xdv-boot: kernel.bin partition-relative LBA resolved";
-            emit "xdv-boot: reading kernel.bin image header";
-            emit "xdv-boot: validating kernel.bin image";
-            emit "xdv-boot: loading kernel.bin sectors into memory";
-            emit "xdv-boot: UEFI handoff to kernel.bin";
-            return BOOT_OK;
-        } else {
-            return BOOT_FAIL;
-        }
+    proc K::boot_locate_and_load_kernel_uefi() -> UInt32 {
+        uefi_stage_init();
+        uefi_load_kernel_from_xdvfs();
+        return BOOT_OK;
+    }
+
+    proc K::boot_kernel_handoff() -> UInt32 {
+        kernel_jump_to_entry();
+        uefi_handoff_kernel();
+        emit "xdv-boot: handoff to kernel.bin";
+        return BOOT_OK;
     }
 }
