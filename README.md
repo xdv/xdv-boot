@@ -1,40 +1,47 @@
-# XDV-Boot - XDV Boot Loader
+# XDV-Boot
 
-Version: 0.3.0
-Status: Active
+Status: Active  
 Language: Dust Programming Language (DPL)
 
-## Overview
+`xdv-boot` is the `boot.bin` runtime for XDV OS.
 
-`xdv-boot` is the boot subsystem for XDV OS and models both startup paths:
+It owns the boot sequence after stage0 loads `boot.bin`:
 
-- BIOS/MBR boot flow.
-- UEFI/GPT boot flow.
+1. render XDV splash,
+2. hold splash window for 8 seconds,
+3. detect firmware origin (MBR or UEFI),
+4. mount xdvfs and resolve `/console/kernel.bin`,
+5. load kernel image and hand off execution.
 
-The image pipeline in `xdv-os/src` consumes this layout to build 64MB partitioned artifacts.
+## Boot Contract
 
-## Source Layout
+- Stage0 (`xdv-os/src/boot_sector.asm`) loads `boot.bin` only.
+- `xdv-boot` resolves kernel location from xdvfs (`/console/kernel.bin`).
+- `xdv-boot` performs final transfer to kernel entry.
 
-- `src/boot_loader_profile.ds` - codegen-safe loader profile used by xdv-os.
-- `src/boot_mbr.ds` - MBR stage and partition-relative kernel load policy.
-- `src/boot_uefi.ds` - UEFI stage and GPT/ESP flow model.
-- `src/boot_stage1.ds` - shared stage sequencing.
-- `src/boot_disk.ds` - disk access model.
-- `src/boot_gdt.ds` - GDT setup model.
-- `src/boot_idt.ds` - IDT setup model.
-- `src/boot_paging.ds` - paging model.
-- `src/boot_xdvfs_mount.ds` - xdvfs offsets and mount model.
-- `src/boot_kernel_load.ds` - kernel load and handoff model.
+## Repository Layout
 
-## Build Check
+- `src/boot.ds`: canonical boot flow for `boot.bin`.
+- `src/boot_splash_profile.ds`: ASCII splash payload.
+- `src/boot_loader_profile.ds`: MBR/UEFI origin recognition.
+- `src/boot_mbr.ds`: MBR partition profile and load helpers.
+- `src/boot_uefi.ds`: UEFI/GPT profile and kernel handoff helpers.
+- `src/boot_xdvfs_mount.ds`: xdvfs mount and `/console/kernel.bin` lookup.
+- `src/boot_kernel_load.ds`: kernel header read, validation, segment load, entry jump.
+- `src/boot_stage1.ds`: stage init orchestration model.
+- `src/boot_disk.ds`: disk access and read/write checks.
+- `src/boot_gdt.ds`, `src/boot_idt.ds`, `src/boot_paging.ds`: boot CPU/runtime setup models.
+- `src/*_tests.ds`: module-level behavior tests.
+
+## Documentation
+
+- `docs/README.md`
+- `docs/boot_sequence.md`
+- `docs/module_reference.md`
+- `changelog.md`
+
+## Validate
 
 ```bash
 dust check xdv-boot/src
 ```
-
-## Notes
-
-- BIOS stage machine code in `xdv-os/src/boot_sector.asm` is a stage-0 transport that reads xdvfs boot-record metadata.
-- Dust boot policy and handoff flow are defined in `src/boot_loader_profile.ds`.
-- Partitioned image generation is implemented in `xdv-os/src/build_images.ps1`.
-- Kernel discovery now targets `kernel.bin` in xdvfs, with a legacy fallback slot for older images.
