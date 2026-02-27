@@ -1,4 +1,8 @@
-// XDV-Boot: Paging Tests
+// File: boot_paging_tests.ds - This file is part of XDV
+// Copyright (c) 2026 Dust LLC, and Contributors
+// Description:
+//   XDV-Boot: Paging Tests
+//   Test cases for paging functionality.
 
 forge BootPagingTests {
 

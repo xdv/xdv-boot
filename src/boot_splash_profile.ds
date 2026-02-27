@@ -1,4 +1,8 @@
-// XDV-Boot splash path for xdv-os integration.
+// File: boot_splash_profile.ds - This file is part of XDV
+// Copyright (c) 2026 Dust LLC, and Contributors
+// Description:
+//   XDV-Boot splash path for xdv-os integration.
+//   Displays boot splash screen.
 
 forge XdvBootSplashProfile {
     const BOOT_OK: UInt32 = 0;

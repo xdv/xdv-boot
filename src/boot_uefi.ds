@@ -1,4 +1,8 @@
-// XDV-Boot: UEFI stage for GPT/ESP boot flows.
+// File: boot_uefi.ds - This file is part of XDV
+// Copyright (c) 2026 Dust LLC, and Contributors
+// Description:
+//   XDV-Boot: UEFI stage for GPT/ESP boot flows.
+//   Handles GPT partition parsing and UEFI boot services.
 
 forge BootUefi {
 

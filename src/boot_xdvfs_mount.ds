@@ -1,4 +1,8 @@
-// XDV-Boot: XDVFS Mount
+// File: boot_xdvfs_mount.ds - This file is part of XDV
+// Copyright (c) 2026 Dust LLC, and Contributors
+// Description:
+//   XDV-Boot: XDVFS Mount
+//   Handles mounting XDVFS filesystem from boot disk.
 
 forge BootXdvFsMount {
 

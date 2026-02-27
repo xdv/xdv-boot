@@ -1,5 +1,8 @@
-// XDV-Boot canonical boot.bin flow for xdv-os:
-// splash -> wait 8 seconds -> recognize MBR/UEFI origin -> load /console/kernel.bin -> handoff
+// File: boot.ds - This file is part of XDV
+// Copyright (c) 2026 Dust LLC, and Contributors
+// Description:
+//   XDV-Boot canonical boot.bin flow for xdv-os:
+//   splash -> wait 8 seconds -> recognize MBR/UEFI origin -> load /console/kernel.bin -> handoff
 
 forge XdvBoot {
 

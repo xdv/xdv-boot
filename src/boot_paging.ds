@@ -1,4 +1,8 @@
-// XDV-Boot: Paging Enablement
+// File: boot_paging.ds - This file is part of XDV
+// Copyright (c) 2026 Dust LLC, and Contributors
+// Description:
+//   XDV-Boot: Paging Enablement
+//   Sets up page tables and enables paging.
 
 forge BootPaging {
 

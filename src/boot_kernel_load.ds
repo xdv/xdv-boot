@@ -1,4 +1,8 @@
-// XDV-Boot: Kernel Loading
+// File: boot_kernel_load.ds - This file is part of XDV
+// Copyright (c) 2026 Dust LLC, and Contributors
+// Description:
+//   XDV-Boot: Kernel Loading
+//   Handles kernel binary loading into memory.
 
 forge BootKernelLoad {
 

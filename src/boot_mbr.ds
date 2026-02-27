@@ -1,4 +1,8 @@
-// XDV-Boot: Stage 1 - MBR Bootloader
+// File: boot_mbr.ds - This file is part of XDV
+// Copyright (c) 2026 Dust LLC, and Contributors
+// Description:
+//   XDV-Boot: Stage 1 - MBR Bootloader
+//   Handles MBR parsing and legacy BIOS boot flows.
 
 forge BootMbr {
 

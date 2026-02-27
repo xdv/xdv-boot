@@ -1,4 +1,8 @@
-// XDV-Boot: Disk I/O Model
+// File: boot_disk.ds - This file is part of XDV
+// Copyright (c) 2026 Dust LLC, and Contributors
+// Description:
+//   XDV-Boot: Disk I/O Model
+//   ATA/PATA disk access primitives.
 
 forge BootDisk {
 

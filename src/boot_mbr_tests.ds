@@ -1,4 +1,8 @@
-// XDV-Boot: MBR Tests
+// File: boot_mbr_tests.ds - This file is part of XDV
+// Copyright (c) 2026 Dust LLC, and Contributors
+// Description:
+//   XDV-Boot: MBR Tests
+//   Test cases for MBR boot functionality.
 
 forge BootMbrTests {
 

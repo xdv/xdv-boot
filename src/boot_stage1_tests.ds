@@ -1,4 +1,8 @@
-// XDV-Boot: Stage 1 Tests
+// File: boot_stage1_tests.ds - This file is part of XDV
+// Copyright (c) 2026 Dust LLC, and Contributors
+// Description:
+//   XDV-Boot: Stage 1 Tests
+//   Test cases for Stage 1 boot functionality.
 
 forge BootStage1Tests {
 

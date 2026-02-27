@@ -1,4 +1,8 @@
-// XDV-Boot: Stage 1 - Basic Initialization
+// File: boot_stage1.ds - This file is part of XDV
+// Copyright (c) 2026 Dust LLC, and Contributors
+// Description:
+//   XDV-Boot: Stage 1 - Basic Initialization
+//   Sets up stack, minimal environment before kernel load.
 
 forge BootStage1 {
 

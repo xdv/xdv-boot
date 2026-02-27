@@ -1,4 +1,8 @@
-// XDV-Boot: XDVFS Mount Tests
+// File: boot_xdvfs_mount_tests.ds - This file is part of XDV
+// Copyright (c) 2026 Dust LLC, and Contributors
+// Description:
+//   XDV-Boot: XDVFS Mount Tests
+//   Test cases for XDVFS mounting.
 
 forge BootXdvFsMountTests {
 
