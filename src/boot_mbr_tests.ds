@@ -1,38 +1,74 @@
 // File: boot_mbr_tests.ds - This file is part of XDV
 // Copyright (c) 2026 Dust LLC, and Contributors
 // Description:
-//   XDV-Boot: MBR Tests
-//   Test cases for MBR boot functionality.
+//   XDV-Boot: MBR parity and failure-path tests.
 
 forge BootMbrTests {
 
-    proc K::test_mbr_magic() {
-        let magic = 43609;
-        return 0;
+    const TEST_PASS: UInt32 = 0;
+    const TEST_FAIL: UInt32 = 1;
+
+    const BOOT_MODE_MBR: UInt32 = 1;
+    const ERR_MBR_MAGIC: UInt32 = 2;
+    const KERNEL_RELATIVE_LBA: UInt32 = 160;
+
+    proc K::test_mbr_mode_detect() -> UInt32 {
+        let mode = mbr_init();
+        if mode == BOOT_MODE_MBR {
+            return TEST_PASS;
+        } else {
+            return TEST_FAIL;
+        }
     }
 
-    proc K::test_mbr_size() {
-        let size = 512;
-        return 0;
+    proc K::test_mbr_signature_failure_path() -> UInt32 {
+        let status = mbr_validate_signature(0);
+        if status == ERR_MBR_MAGIC {
+            return TEST_PASS;
+        } else {
+            return TEST_FAIL;
+        }
     }
 
-    proc K::test_multiboot_magic() {
-        let magic = 911045161;
-        return 0;
+    proc K::test_mbr_partition_candidate_failure_path() -> UInt32 {
+        let candidate = select_partition_candidate(0, 0, 0);
+        if candidate == 0 {
+            return TEST_PASS;
+        } else {
+            return TEST_FAIL;
+        }
     }
 
-    proc K::test_boot_drive() {
-        let drive = 0;
-        return 0;
+    proc K::test_mbr_compute_kernel_lba() -> UInt32 {
+        let partition = locate_boot_partition();
+        if partition > 0 {
+            let kernel_lba = mbr_compute_kernel_lba(partition);
+            if kernel_lba == partition + KERNEL_RELATIVE_LBA {
+                return TEST_PASS;
+            } else {
+                return TEST_FAIL;
+            }
+        } else {
+            return TEST_FAIL;
+        }
     }
 
-    proc K::test_load_stage2() {
-        let result = 0;
-        return 0;
+    proc K::test_mbr_kernel_path_parity_with_xdvfs() -> UInt32 {
+        let mbr_lba = load_kernel_from_partition();
+        let xdvfs_lba = xdvfs_get_console_kernel_lba();
+        if mbr_lba == xdvfs_lba {
+            return TEST_PASS;
+        } else {
+            return TEST_FAIL;
+        }
     }
 
-    proc K::test_jump_to_stage2() {
-        let result = 0;
-        return 0;
+    proc K::test_mbr_stage2_load_path() -> UInt32 {
+        let stage2 = load_stage2();
+        if stage2 > 0 {
+            return TEST_PASS;
+        } else {
+            return TEST_FAIL;
+        }
     }
 }

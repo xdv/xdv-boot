@@ -35,3 +35,14 @@ jobs:
           export PATH="$PWD/../dust/target/debug:$PATH"
           dust check src
           echo "All xdv-boot files check OK"
+
+      - name: Verify XDV-062 flow markers
+        run: |
+          grep -q "strict handoff to kernel entry only" src/boot.ds
+          grep -q "boot_verify_firmware_path" src/boot.ds
+          grep -q "xdv-boot: failure:" src/boot.ds
+          grep -q "xdv-boot: failure:" src/boot_mbr.ds
+          grep -q "xdv-boot: failure:" src/boot_uefi.ds
+          grep -q "test_mbr_kernel_path_parity_with_xdvfs" src/boot_mbr_tests.ds
+          grep -q "test_uefi_kernel_path_parity_with_mbr" src/boot_uefi_tests.ds
+          echo "XDV-062 markers present"

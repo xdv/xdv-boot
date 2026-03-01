@@ -2,28 +2,29 @@
 // Copyright (c) 2026 Dust LLC, and Contributors
 // Description:
 //   XDV-Boot firmware loader profile.
-//   Detects boot mode (MBR/UEFI).
+//   Detects boot mode (MBR/UEFI) with strict unknown-mode signaling.
 
 forge BootLoaderProfile {
+    const BOOT_MODE_UNKNOWN: UInt32 = 0;
     const BOOT_MODE_MBR: UInt32 = 1;
     const BOOT_MODE_UEFI: UInt32 = 2;
-    const BOOT_MODE_UNKNOWN: UInt32 = 0;
 
     proc K::boot_loader_detect_mode(depth: UInt32) -> UInt32 {
-        let mbr = mbr_init();
         emit "xdv-boot: boot mode detect (MBR/UEFI)";
+
+        let mbr = mbr_init();
         if mbr == BOOT_MODE_MBR {
             emit "xdv-boot: recognized loader origin = MBR";
             return BOOT_MODE_MBR + depth - depth;
-        } else {
-            let uefi = uefi_stage_init();
-            if uefi == BOOT_MODE_UEFI {
-                emit "xdv-boot: recognized loader origin = UEFI";
-                return BOOT_MODE_UEFI + depth - depth;
-            } else {
-                emit "xdv-boot: firmware origin unknown, defaulting to MBR profile";
-                return BOOT_MODE_UNKNOWN + BOOT_MODE_MBR - BOOT_MODE_UNKNOWN;
-            }
         }
+
+        let uefi = uefi_stage_init();
+        if uefi == BOOT_MODE_UEFI {
+            emit "xdv-boot: recognized loader origin = UEFI";
+            return BOOT_MODE_UEFI + depth - depth;
+        }
+
+        emit "xdv-boot: failure: unable to recognize loader origin";
+        return BOOT_MODE_UNKNOWN;
     }
 }

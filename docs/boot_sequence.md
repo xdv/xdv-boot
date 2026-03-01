@@ -2,11 +2,12 @@
 
 `xdv-boot/src/boot.ds` defines the canonical `boot.bin` sequence:
 
-1. `boot_splash_contract()`
+1. `boot_render_splash_step()`
 2. `boot_wait_splash_window()`
 3. `boot_probe_firmware_origin()`
-4. `boot_locate_and_load_kernel(mode)`
-5. `boot_kernel_handoff()`
+4. `boot_verify_firmware_path(mode)`
+5. `boot_locate_and_load_kernel(mode)`
+6. `boot_kernel_handoff()`
 
 ## Detailed Flow
 
@@ -28,12 +29,19 @@
 - Entry: `boot_loader_detect_mode(depth)`
 - Behavior:
   - attempts MBR profile (`mbr_init()`),
-  - then UEFI profile (`uefi_stage_init()`),
-  - defaults to MBR profile when unknown.
+  - attempts UEFI profile (`uefi_stage_init()`),
+  - returns unknown only when both fail.
 
-This step identifies origin profile; kernel path remains the same across modes.
+## 4) MBR/UEFI parity validation
 
-## 4) Kernel location and load
+- Module: `src/boot.ds`
+- Entry: `boot_verify_firmware_path(mode)`
+- Behavior:
+  - if mode is MBR, re-validates MBR profile path,
+  - if mode is UEFI, re-validates UEFI profile path,
+  - aborts boot on parity mismatch.
+
+## 5) Kernel location and load
 
 - Module: `src/boot_xdvfs_mount.ds`
   - `xdvfs_mount_device(device)`
@@ -47,11 +55,21 @@ Kernel lookup target is:
 
 - `xdvfs:/console/kernel.bin`
 
-## 5) Final handoff
+## 6) Strict handoff
 
 - Module: `src/boot.ds`
 - Entry: `boot_kernel_handoff()`
-- Behavior: performs transfer via `xdv_boot_transfer_kernel()`.
+- Behavior:
+  - requires `kernel_get_entry() > 0`,
+  - requires `kernel_jump_to_entry()` strict precheck success,
+  - calls `xdv_boot_transfer_kernel()` only after precheck success.
+
+Assembly-side transfer additionally rejects zero/out-of-window entry offsets before jump.
+
+## Failure-path logs
+
+`boot.ds`, `boot_mbr.ds`, `boot_uefi.ds`, and `boot_kernel_load.ds` emit explicit
+`xdv-boot: failure: ...` logs for contract failures.
 
 ## Integration Contract with xdv-os
 

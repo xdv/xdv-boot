@@ -4,11 +4,12 @@
 
 - `src/boot.ds`
   - Canonical `boot.bin` control path.
-  - Coordinates splash, wait, firmware mode detection, kernel load, and handoff.
+  - Coordinates splash, wait, firmware mode detection, parity verification,
+    kernel load, and strict handoff.
 
 - `src/boot_loader_profile.ds`
   - Firmware-origin profile selection (`MBR` or `UEFI`).
-  - Fallback profile behavior when mode is unknown.
+  - Strict unknown-mode signaling when both probes fail.
 
 ## Kernel lookup and loading
 
@@ -18,17 +19,20 @@
   - Exports `xdvfs_get_console_kernel_lba()`.
 
 - `src/boot_kernel_load.ds`
-  - Kernel header read, format validation checks, segment load window, and entry jump support.
+  - Kernel header read, format validation checks, segment load window,
+    and strict entry-target precheck support.
 
 ## Firmware-specific modules
 
 - `src/boot_mbr.ds`
   - MBR signature validation and partition scan policy.
   - Partition-relative stage2/kernel helper routines.
+  - Failure-path logging for signature, partition, and load failures.
 
 - `src/boot_uefi.ds`
   - GPT validation and ESP mount profile.
   - UEFI-side kernel load and handoff helpers.
+  - Failure-path logging for GPT/ESP/kernel load failures.
 
 ## Platform setup and disk model
 
@@ -59,4 +63,5 @@
 - `src/boot_uefi_tests.ds`
 - `src/boot_xdvfs_mount_tests.ds`
 
-These files provide module-level verification for the boot pipeline components.
+`boot_mbr_tests.ds` and `boot_uefi_tests.ds` include parity/failure-path tests for
+MBR/UEFI profile behavior under XDV-062.

@@ -57,6 +57,23 @@ forge BootMbr {
         }
     }
 
+    proc K::mbr_validate_signature(signature: UInt16) -> UInt32 {
+        if signature == MBR_MAGIC {
+            return MBR_MAGIC;
+        } else {
+            emit "xdv-boot: failure: invalid MBR signature";
+            return ERR_MBR_MAGIC;
+        }
+    }
+
+    proc K::mbr_compute_kernel_lba(partition_start_lba: UInt32) -> UInt32 {
+        if partition_start_lba > 0 {
+            return partition_start_lba + KERNEL_RELATIVE_LBA;
+        } else {
+            return 0;
+        }
+    }
+
     proc K::mbr_init() -> UInt32 {
         emit "xdv-boot: MBR stage online";
         emit "xdv-boot: using partition-aware LBA load";
@@ -64,43 +81,46 @@ forge BootMbr {
         if signature == MBR_MAGIC {
             let partition = locate_boot_partition();
             if partition > 0 {
+                emit "xdv-boot: MBR profile resolved boot partition";
                 return BOOT_MODE_MBR;
             } else {
+                emit "xdv-boot: failure: MBR could not resolve boot partition";
                 return BOOT_FAIL;
             }
         } else {
+            emit "xdv-boot: failure: MBR signature check failed";
             return BOOT_FAIL;
         }
     }
 
     proc K::check_mbr_magic() -> UInt32 {
         emit "xdv-boot: checking MBR signature";
-        let signature = MBR_MAGIC;
-        if signature == MBR_MAGIC {
-            return MBR_MAGIC;
-        } else {
-            return ERR_MBR_MAGIC;
-        }
+        return mbr_validate_signature(MBR_MAGIC);
     }
 
     proc K::locate_boot_partition() -> UInt32 {
         emit "xdv-boot: scanning partition table for active xdvfs partition";
         let candidate0 = select_partition_candidate(PARTITION_ACTIVE_FLAG, PARTITION_TYPE_XDVFS, XDVFS_START_LBA);
         if candidate0 > 0 {
+            emit "xdv-boot: MBR partition candidate[0] selected";
             return candidate0;
         } else {
             let candidate1 = select_partition_candidate(0, PARTITION_TYPE_XDVFS, XDVFS_START_LBA + 32768);
             if candidate1 > 0 {
+                emit "xdv-boot: MBR partition candidate[1] selected";
                 return candidate1;
             } else {
                 let candidate2 = select_partition_candidate(0, 131, XDVFS_START_LBA + 65536);
                 if candidate2 > 0 {
+                    emit "xdv-boot: MBR partition candidate[2] selected";
                     return candidate2;
                 } else {
                     let candidate3 = select_partition_candidate(0, 0, 0);
                     if candidate3 > 0 {
+                        emit "xdv-boot: MBR partition candidate[3] selected";
                         return candidate3;
                     } else {
+                        emit "xdv-boot: failure: no xdvfs partition candidate found";
                         return 0;
                     }
                 }
@@ -117,9 +137,11 @@ forge BootMbr {
             if read_status == BOOT_OK {
                 return STAGE2_LOAD_SEG;
             } else {
+                emit "xdv-boot: failure: stage2 read failed";
                 return ERR_STAGE2_LOAD;
             }
         } else {
+            emit "xdv-boot: failure: stage2 load has no boot partition";
             return ERR_PARTITION_NOT_FOUND;
         }
     }
@@ -128,15 +150,22 @@ forge BootMbr {
         emit "xdv-boot: searching partition for /console/kernel.bin";
         let partition = locate_boot_partition();
         if partition > 0 {
-            let kernel_lba = partition + KERNEL_RELATIVE_LBA;
-            emit "xdv-boot: /console/kernel.bin partition-relative LBA resolved";
-            let read_status = disk_read_sector(kernel_lba, KERNEL_BUFFER_ADDR);
-            if read_status == BOOT_OK {
-                return kernel_lba;
+            let kernel_lba = mbr_compute_kernel_lba(partition);
+            if kernel_lba > 0 {
+                emit "xdv-boot: /console/kernel.bin partition-relative LBA resolved";
+                let read_status = disk_read_sector(kernel_lba, KERNEL_BUFFER_ADDR);
+                if read_status == BOOT_OK {
+                    return kernel_lba;
+                } else {
+                    emit "xdv-boot: failure: kernel read from MBR partition failed";
+                    return ERR_KERNEL_LOAD;
+                }
             } else {
+                emit "xdv-boot: failure: kernel LBA computation failed";
                 return ERR_KERNEL_LOAD;
             }
         } else {
+            emit "xdv-boot: failure: kernel load has no boot partition";
             return ERR_PARTITION_NOT_FOUND;
         }
     }
@@ -147,6 +176,7 @@ forge BootMbr {
             emit "xdv-boot: entering stage2";
             return BOOT_OK;
         } else {
+            emit "xdv-boot: failure: cannot enter stage2";
             return BOOT_FAIL;
         }
     }

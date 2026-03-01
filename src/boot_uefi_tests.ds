@@ -1,33 +1,86 @@
 // File: boot_uefi_tests.ds - This file is part of XDV
 // Copyright (c) 2026 Dust LLC, and Contributors
 // Description:
-//   XDV-Boot: UEFI Tests
-//   Test cases for UEFI boot functionality.
+//   XDV-Boot: UEFI parity and failure-path tests.
 
 forge BootUefiTests {
 
-    proc K::test_boot_mode_uefi() {
-        let mode = 2;
-        return 0;
+    const TEST_PASS: UInt32 = 0;
+    const TEST_FAIL: UInt32 = 1;
+
+    const BOOT_MODE_UEFI: UInt32 = 2;
+    const GPT_VALID: UInt32 = 1;
+    const BOOT_OK: UInt32 = 0;
+    const ERR_GPT_INVALID: UInt32 = 2;
+    const ERR_ESP_INVALID: UInt32 = 3;
+    const ERR_KERNEL_LOAD: UInt32 = 5;
+
+    proc K::test_uefi_mode_detect() -> UInt32 {
+        let mode = uefi_stage_init();
+        if mode == BOOT_MODE_UEFI {
+            return TEST_PASS;
+        } else {
+            return TEST_FAIL;
+        }
     }
 
-    proc K::test_gpt_header_lba() {
-        let lba = 1;
-        return 0;
+    proc K::test_uefi_gpt_shape_valid() -> UInt32 {
+        let status = uefi_validate_gpt_shape(1, 2, 128);
+        if status == GPT_VALID {
+            return TEST_PASS;
+        } else {
+            return TEST_FAIL;
+        }
     }
 
-    proc K::test_esp_start_lba() {
-        let lba = 2048;
-        return 0;
+    proc K::test_uefi_gpt_shape_failure_path() -> UInt32 {
+        let status = uefi_validate_gpt_shape(0, 2, 128);
+        if status == ERR_GPT_INVALID {
+            return TEST_PASS;
+        } else {
+            return TEST_FAIL;
+        }
     }
 
-    proc K::test_partition_count() {
-        let count = 128;
-        return 0;
+    proc K::test_uefi_esp_layout_valid() -> UInt32 {
+        let status = uefi_validate_esp_layout(2048, 16384);
+        if status == BOOT_OK {
+            return TEST_PASS;
+        } else {
+            return TEST_FAIL;
+        }
     }
 
-    proc K::test_kernel_load_from_xdvfs() {
-        let result = 0;
-        return 0;
+    proc K::test_uefi_esp_layout_failure_path() -> UInt32 {
+        let status = uefi_validate_esp_layout(0, 1024);
+        if status == ERR_ESP_INVALID {
+            return TEST_PASS;
+        } else {
+            return TEST_FAIL;
+        }
+    }
+
+    proc K::test_uefi_kernel_lba_failure_path() -> UInt32 {
+        let status = uefi_validate_kernel_lba(0);
+        if status == ERR_KERNEL_LOAD {
+            return TEST_PASS;
+        } else {
+            return TEST_FAIL;
+        }
+    }
+
+    proc K::test_uefi_kernel_path_parity_with_mbr() -> UInt32 {
+        let uefi_load = uefi_load_kernel_from_xdvfs();
+        if uefi_load == BOOT_OK {
+            let mbr_lba = load_kernel_from_partition();
+            let xdvfs_lba = xdvfs_get_console_kernel_lba();
+            if mbr_lba == xdvfs_lba {
+                return TEST_PASS;
+            } else {
+                return TEST_FAIL;
+            }
+        } else {
+            return TEST_FAIL;
+        }
     }
 }

@@ -37,26 +37,32 @@ forge BootKernelLoad {
         if kernel_lba > 0 {
             return kernel_load_from_lba(kernel_lba);
         } else {
+            emit "xdv-boot: failure: kernel lba lookup returned 0";
             return ERR_HEADER_READ;
         }
     }
 
     proc K::kernel_load_from_lba(kernel_lba: UInt64) -> UInt32 {
         emit "xdv-boot: kernel loader init";
+
         let header = kernel_read_header(kernel_lba);
         if header == LOAD_OK {
             let valid = kernel_validate_elf();
             if valid == VALID_ELF {
                 let segments = kernel_load_segments(kernel_lba);
                 if segments > 0 {
+                    emit "xdv-boot: kernel sectors loaded";
                     return LOAD_OK;
                 } else {
+                    emit "xdv-boot: failure: kernel segment load failed";
                     return ERR_SEGMENT_LOAD;
                 }
             } else {
+                emit "xdv-boot: failure: kernel image validation failed";
                 return ERR_BAD_IMAGE;
             }
         } else {
+            emit "xdv-boot: failure: kernel header read failed";
             return ERR_HEADER_READ;
         }
     }
@@ -68,9 +74,11 @@ forge BootKernelLoad {
             if read_status == LOAD_OK {
                 return LOAD_OK;
             } else {
+                emit "xdv-boot: failure: disk read failed while reading kernel header";
                 return ERR_HEADER_READ;
             }
         } else {
+            emit "xdv-boot: failure: invalid kernel lba";
             return ERR_HEADER_READ;
         }
     }
@@ -84,18 +92,23 @@ forge BootKernelLoad {
                         if EM_X86_64 == 62 {
                             return VALID_ELF;
                         } else {
+                            emit "xdv-boot: failure: kernel machine type mismatch";
                             return INVALID_ELF;
                         }
                     } else {
+                        emit "xdv-boot: failure: kernel elf version mismatch";
                         return INVALID_ELF;
                     }
                 } else {
+                    emit "xdv-boot: failure: kernel endian mismatch";
                     return INVALID_ELF;
                 }
             } else {
+                emit "xdv-boot: failure: kernel elf class mismatch";
                 return INVALID_ELF;
             }
         } else {
+            emit "xdv-boot: failure: kernel elf magic mismatch";
             return INVALID_ELF;
         }
     }
@@ -108,9 +121,11 @@ forge BootKernelLoad {
             if read_status == LOAD_OK {
                 return KERNEL_SEGMENT_COUNT;
             } else {
+                emit "xdv-boot: failure: disk read failed while loading kernel segments";
                 return 0;
             }
         } else {
+            emit "xdv-boot: failure: kernel sector window too small";
             return 0;
         }
     }
@@ -130,16 +145,23 @@ forge BootKernelLoad {
             emit "xdv-boot: kernel entry resolved";
             return KERNEL_ENTRY_ADDR;
         } else {
+            emit "xdv-boot: failure: kernel entry unavailable (invalid image)";
             return 0;
         }
     }
 
     proc K::kernel_jump_to_entry() -> UInt32 {
         let entry = kernel_get_entry();
+        if entry == 0 {
+            emit "xdv-boot: failure: refusing handoff without valid kernel entry";
+            return ERR_BAD_ENTRY;
+        }
+
         if entry == KERNEL_ENTRY_ADDR {
-            emit "xdv-boot: handoff to kernel.bin";
+            emit "xdv-boot: strict handoff target confirmed: kernel entry";
             return LOAD_OK;
         } else {
+            emit "xdv-boot: failure: rejecting non-kernel handoff target";
             return ERR_BAD_ENTRY;
         }
     }

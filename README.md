@@ -10,8 +10,15 @@ It owns the boot sequence after stage0 loads `boot.bin`:
 1. render XDV splash,
 2. hold splash window for 8 seconds,
 3. detect firmware origin (MBR or UEFI),
-4. mount xdvfs and resolve `/console/kernel.bin`,
-5. load kernel image and hand off execution.
+4. run MBR/UEFI parity verification,
+5. mount xdvfs and resolve `/console/kernel.bin`,
+6. load kernel image and strict-handoff execution.
+
+## XDV-062 Focus
+
+- Finalized splash/timer/load flow in `src/boot.ds`.
+- Strict handoff guard: transfer occurs only after kernel entry precheck.
+- MBR/UEFI parity tests and failure-path logs are included in source/test modules.
 
 ## Boot Contract
 

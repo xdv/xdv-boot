@@ -27,27 +27,11 @@ forge BootUefi {
     const EFI_KERNEL_BUFFER: UInt64 = 1048576;
     const EFI_BOOT_DEVICE: UInt32 = 1;
 
-    proc K::uefi_stage_init() -> UInt32 {
-        emit "xdv-boot: UEFI stage init";
-        let gpt = uefi_validate_gpt();
-        if gpt == GPT_VALID {
-            let esp = uefi_mount_esp();
-            if esp == BOOT_OK {
-                return BOOT_MODE_UEFI;
-            } else {
-                return BOOT_FAIL;
-            }
-        } else {
-            return BOOT_FAIL;
-        }
-    }
-
-    proc K::uefi_validate_gpt() -> UInt32 {
-        emit "xdv-boot: validating GPT header and partition array";
-        if GPT_HEADER_LBA == 1 {
-            if PARTITION_ENTRY_LBA == 2 {
-                if PARTITION_ENTRY_COUNT >= 32 {
-                    if PARTITION_ENTRY_COUNT <= 512 {
+    proc K::uefi_validate_gpt_shape(header_lba: UInt64, entry_lba: UInt64, entry_count: UInt32) -> UInt32 {
+        if header_lba == 1 {
+            if entry_lba == 2 {
+                if entry_count >= 32 {
+                    if entry_count <= 512 {
                         return GPT_VALID;
                     } else {
                         return ERR_GPT_INVALID;
@@ -63,20 +47,68 @@ forge BootUefi {
         }
     }
 
-    proc K::uefi_mount_esp() -> UInt32 {
-        emit "xdv-boot: mounting EFI system partition";
-        if ESP_START_LBA >= 2048 {
-            if ESP_SECTOR_COUNT >= 4096 {
-                let mount_status = xdvfs_mount_device(EFI_BOOT_DEVICE);
-                if mount_status == BOOT_OK {
-                    return BOOT_OK;
-                } else {
-                    return ERR_ESP_INVALID;
-                }
+    proc K::uefi_validate_esp_layout(start_lba: UInt64, sector_count: UInt64) -> UInt32 {
+        if start_lba >= 2048 {
+            if sector_count >= 4096 {
+                return BOOT_OK;
             } else {
                 return ERR_ESP_INVALID;
             }
         } else {
+            return ERR_ESP_INVALID;
+        }
+    }
+
+    proc K::uefi_validate_kernel_lba(kernel_lba: UInt64) -> UInt32 {
+        if kernel_lba > 0 {
+            return BOOT_OK;
+        } else {
+            return ERR_KERNEL_LOAD;
+        }
+    }
+
+    proc K::uefi_stage_init() -> UInt32 {
+        emit "xdv-boot: UEFI stage init";
+        let gpt = uefi_validate_gpt();
+        if gpt == GPT_VALID {
+            let esp = uefi_mount_esp();
+            if esp == BOOT_OK {
+                emit "xdv-boot: UEFI profile resolved";
+                return BOOT_MODE_UEFI;
+            } else {
+                emit "xdv-boot: failure: UEFI ESP mount failed";
+                return BOOT_FAIL;
+            }
+        } else {
+            emit "xdv-boot: failure: UEFI GPT validation failed";
+            return BOOT_FAIL;
+        }
+    }
+
+    proc K::uefi_validate_gpt() -> UInt32 {
+        emit "xdv-boot: validating GPT header and partition array";
+        let result = uefi_validate_gpt_shape(GPT_HEADER_LBA, PARTITION_ENTRY_LBA, PARTITION_ENTRY_COUNT);
+        if result == GPT_VALID {
+            return GPT_VALID;
+        } else {
+            emit "xdv-boot: failure: invalid GPT shape";
+            return ERR_GPT_INVALID;
+        }
+    }
+
+    proc K::uefi_mount_esp() -> UInt32 {
+        emit "xdv-boot: mounting EFI system partition";
+        let layout = uefi_validate_esp_layout(ESP_START_LBA, ESP_SECTOR_COUNT);
+        if layout == BOOT_OK {
+            let mount_status = xdvfs_mount_device(EFI_BOOT_DEVICE);
+            if mount_status == BOOT_OK {
+                return BOOT_OK;
+            } else {
+                emit "xdv-boot: failure: EFI filesystem mount failed";
+                return ERR_ESP_INVALID;
+            }
+        } else {
+            emit "xdv-boot: failure: invalid ESP layout";
             return ERR_ESP_INVALID;
         }
     }
@@ -87,6 +119,7 @@ forge BootUefi {
         if read_status == BOOT_OK {
             return BOOT_OK;
         } else {
+            emit "xdv-boot: failure: EFI boot manager read failed";
             return ERR_BOOT_MANAGER_LOAD;
         }
     }
@@ -94,14 +127,17 @@ forge BootUefi {
     proc K::uefi_load_kernel_from_xdvfs() -> UInt32 {
         emit "xdv-boot: searching xdvfs for /console/kernel.bin";
         let kernel_lba = xdvfs_get_console_kernel_lba();
-        if kernel_lba > 0 {
+        let lba_valid = uefi_validate_kernel_lba(kernel_lba);
+        if lba_valid == BOOT_OK {
             let read_status = disk_read_sector(kernel_lba, EFI_KERNEL_BUFFER);
             if read_status == BOOT_OK {
                 return BOOT_OK;
             } else {
+                emit "xdv-boot: failure: UEFI kernel read from xdvfs failed";
                 return ERR_KERNEL_LOAD;
             }
         } else {
+            emit "xdv-boot: failure: UEFI kernel path lookup failed";
             return ERR_KERNEL_LOAD;
         }
     }
@@ -114,9 +150,11 @@ forge BootUefi {
                 emit "xdv-boot: UEFI handoff to /console/kernel.bin";
                 return BOOT_OK;
             } else {
+                emit "xdv-boot: failure: UEFI handoff precheck failed";
                 return BOOT_FAIL;
             }
         } else {
+            emit "xdv-boot: failure: UEFI kernel load failed before handoff";
             return BOOT_FAIL;
         }
     }

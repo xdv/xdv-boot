@@ -1,5 +1,30 @@
 # XDV-Boot Changelog
 
+## 2026-02-28
+
+### Changed
+
+- Finalized canonical boot sequence in `src/boot.ds`:
+  - splash render,
+  - 8-second splash timer window,
+  - firmware-origin detection,
+  - MBR/UEFI parity verification,
+  - `/console/kernel.bin` load,
+  - strict handoff precheck + transfer.
+- Added explicit boot failure-path logging (`xdv-boot: failure: ...`) across:
+  - `src/boot.ds`
+  - `src/boot_mbr.ds`
+  - `src/boot_uefi.ds`
+  - `src/boot_kernel_load.ds`
+- Tightened strict handoff semantics:
+  - `boot.ds` now requires valid entry precheck before transfer,
+  - `xdv-lib` boot wrapper now propagates transfer status,
+  - `xdv_lib_boot_runtime.asm` now rejects zero/out-of-window entry offsets.
+- Replaced placeholder MBR/UEFI tests with parity/failure-path test cases in:
+  - `src/boot_mbr_tests.ds`
+  - `src/boot_uefi_tests.ds`
+- Updated README and docs for XDV-062 flow and strict handoff behavior.
+
 ## 2026-02-20
 
 ### Added
